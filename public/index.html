@@ -223,10 +223,10 @@
 
   <script>
     // Supabase setup
-    const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.supabase.co';
+    const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.sb.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bWlkd3drd3JvY2l4bXJzZ2l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2ODQ1NzgsImV4cCI6MjA4NDI2MDU3OH0.2MdNumOLrErGknOE4SqLzs1ZIs6HOfp2JZpuz5UIhrs';
     
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.sb.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     // Auth state
     let currentUser = null;
