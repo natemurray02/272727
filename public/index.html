@@ -234,7 +234,7 @@
 
     // Check session on load
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await sb.auth.getSession();
       if (session) {
         currentUser = session.user;
         // Get profile data
@@ -258,7 +258,7 @@
     }
 
     // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         currentUser = session.user;
         const { data: profile } = await supabase
@@ -313,7 +313,7 @@
           if (!e.target.closest('.user-menu')) dropdown.classList.remove('show');
         });
         logoutBtn.onclick = async () => {
-          await supabase.auth.signOut();
+          await sb.auth.signOut();
           currentUser = null;
           renderAuthHeader();
           render();
@@ -419,7 +419,7 @@
             throw new Error('Password must be at least 6 characters');
           }
           
-          const { data, error } = await supabase.auth.signUp({
+          const { data, error } = await sb.auth.signUp({
             email,
             password,
             options: {
@@ -433,7 +433,7 @@
           successEl.classList.remove('hidden');
           
         } else if (authMode === 'login') {
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const { data, error } = await sb.auth.signInWithPassword({
             email,
             password
           });
@@ -442,7 +442,7 @@
           // Auth state change handler will update UI
           
         } else if (authMode === 'forgot') {
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          const { error } = await sb.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin
           });
           
