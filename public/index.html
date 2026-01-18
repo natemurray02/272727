@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AllIn27 | Texas Hold'em Poker</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♠️</text></svg>">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -122,348 +121,13 @@
     .sit-in-btn{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);padding:.8rem 2rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:bold;cursor:pointer;z-index:60}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     .hidden{display:none!important}
-
-    /* Auth Styles */
-    .auth-header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:flex-end;align-items:center;padding:.75rem 1rem;z-index:200;background:linear-gradient(180deg,rgba(9,9,11,.95),transparent)}
-    .auth-buttons{display:flex;gap:.5rem;align-items:center}
-    .auth-btn{padding:.5rem 1rem;border-radius:.5rem;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s}
-    .auth-btn-login{background:transparent;border:1px solid rgba(251,191,36,.5);color:#fbbf24}
-    .auth-btn-login:hover{background:rgba(251,191,36,.1)}
-    .auth-btn-signup{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;color:#451a03}
-    .auth-btn-signup:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(251,191,36,.3)}
-    .user-menu{position:relative}
-    .user-display{display:flex;align-items:center;gap:.5rem;padding:.4rem .8rem;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:2rem;cursor:pointer;transition:all .2s}
-    .user-display:hover{background:rgba(251,191,36,.2)}
-    .user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:.75rem;color:#451a03}
-    .user-name{color:#fbbf24;font-size:.85rem;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .user-chips-display{color:#22c55e;font-size:.75rem;font-family:monospace}
-    .user-dropdown{position:absolute;top:100%;right:0;margin-top:.5rem;background:linear-gradient(145deg,#27272a,#18181b);border:1px solid rgba(251,191,36,.2);border-radius:.5rem;min-width:150px;overflow:hidden;opacity:0;visibility:hidden;transform:translateY(-10px);transition:all .2s}
-    .user-dropdown.show{opacity:1;visibility:visible;transform:translateY(0)}
-    .dropdown-item{padding:.75rem 1rem;color:#e4e4e7;font-size:.85rem;cursor:pointer;transition:background .2s;display:flex;align-items:center;gap:.5rem}
-    .dropdown-item:hover{background:rgba(251,191,36,.1)}
-    .dropdown-item.logout{color:#ef4444}
-
-    /* Auth Modal */
-    .auth-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;visibility:hidden;transition:all .3s}
-    .auth-modal-overlay.show{opacity:1;visibility:visible}
-    .auth-modal{background:linear-gradient(145deg,#27272a,#18181b);border:1px solid rgba(251,191,36,.3);border-radius:1rem;padding:2rem;width:100%;max-width:400px;margin:1rem;position:relative;transform:scale(.9);transition:transform .3s}
-    .auth-modal-overlay.show .auth-modal{transform:scale(1)}
-    .auth-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:#71717a;font-size:1.5rem;cursor:pointer;line-height:1}
-    .auth-close:hover{color:#fff}
-    .auth-title{text-align:center;margin-bottom:.5rem}
-    .auth-title h2{font-size:1.5rem;background:linear-gradient(135deg,#fef3c7,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .auth-title p{color:#71717a;font-size:.85rem;margin-top:.25rem}
-    .auth-tabs{display:flex;margin:1.5rem 0;background:rgba(0,0,0,.3);border-radius:.5rem;padding:.25rem}
-    .auth-tab{flex:1;padding:.6rem;border:none;background:transparent;color:#71717a;font-weight:600;font-size:.9rem;cursor:pointer;border-radius:.4rem;transition:all .2s}
-    .auth-tab.active{background:linear-gradient(135deg,#fbbf24,#d97706);color:#451a03}
-    .auth-form{display:flex;flex-direction:column;gap:.75rem}
-    .auth-form label{color:#a1a1aa;font-size:.75rem;margin-bottom:.2rem}
-    .auth-form input{background:rgba(0,0,0,.5);border:1px solid rgba(251,191,36,.2);border-radius:.5rem;padding:.75rem;color:#fff;font-size:.9rem}
-    .auth-form input:focus{outline:none;border-color:#fbbf24}
-    .auth-form input::placeholder{color:#52525b}
-    .auth-submit{margin-top:.5rem;padding:1rem;background:linear-gradient(135deg,#fbbf24,#d97706);border:none;border-radius:.5rem;color:#451a03;font-weight:bold;font-size:1rem;cursor:pointer;transition:all .2s}
-    .auth-submit:hover{transform:translateY(-2px);box-shadow:0 4px 15px rgba(251,191,36,.3)}
-    .auth-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
-    .auth-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.75rem;border-radius:.5rem;font-size:.85rem;margin-bottom:.5rem}
-    .auth-success{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;padding:.75rem;border-radius:.5rem;font-size:.85rem;margin-bottom:.5rem}
-    .auth-link{color:#fbbf24;background:none;border:none;cursor:pointer;font-size:.85rem;margin-top:.5rem}
-    .auth-link:hover{text-decoration:underline}
-    .auth-divider{text-align:center;color:#52525b;font-size:.75rem;margin:1rem 0;position:relative}
-    .auth-divider::before,.auth-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:rgba(255,255,255,.1)}
-    .auth-divider::before{left:0}
-    .auth-divider::after{right:0}
   </style>
 </head>
 <body>
-  <!-- Auth Header -->
-  <div class="auth-header" id="authHeader"></div>
-  
-  <!-- Auth Modal -->
-  <div class="auth-modal-overlay" id="authModal">
-    <div class="auth-modal">
-      <button class="auth-close" id="authClose">&times;</button>
-      <div class="auth-title">
-        <h2>♠ ALL IN 27</h2>
-        <p id="authSubtitle">Welcome back!</p>
-      </div>
-      <div class="auth-tabs">
-        <button class="auth-tab active" data-tab="login">Log In</button>
-        <button class="auth-tab" data-tab="signup">Sign Up</button>
-      </div>
-      <div id="authError" class="auth-error hidden"></div>
-      <div id="authSuccess" class="auth-success hidden"></div>
-      <form class="auth-form" id="authForm">
-        <div id="usernameField" class="hidden">
-          <label>Username *</label>
-          <input type="text" id="authUsername" placeholder="Choose a username">
-        </div>
-        <div>
-          <label>Email *</label>
-          <input type="email" id="authEmail" placeholder="your@email.com" required>
-        </div>
-        <div id="phoneField" class="hidden">
-          <label>Phone (optional)</label>
-          <input type="tel" id="authPhone" placeholder="+1 234 567 8900">
-        </div>
-        <div>
-          <label>Password *</label>
-          <input type="password" id="authPassword" placeholder="••••••••" required>
-        </div>
-        <div id="confirmField" class="hidden">
-          <label>Confirm Password *</label>
-          <input type="password" id="authConfirm" placeholder="••••••••">
-        </div>
-        <button type="submit" class="auth-submit" id="authSubmit">Log In</button>
-      </form>
-      <button class="auth-link" id="forgotLink">Forgot password?</button>
-    </div>
-  </div>
-
   <div id="app"></div>
-
   <script>
-    // Supabase setup
-    const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.sb.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bWlkd3drd3JvY2l4bXJzZ2l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2ODQ1NzgsImV4cCI6MjA4NDI2MDU3OH0.2MdNumOLrErGknOE4SqLzs1ZIs6HOfp2JZpuz5UIhrs';
-    
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // Auth state
-    let currentUser = null;
-    let authMode = 'login'; // 'login', 'signup', 'forgot'
-
-    // Check session on load
-    async function checkSession() {
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        // Get profile data
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, chips_balance')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          currentUser.username = profile.username;
-          currentUser.chips_balance = profile.chips_balance;
-        }
-        // Set name from profile
-        if (currentUser.username) {
-          state.name = currentUser.username;
-          localStorage.setItem('pokerName', currentUser.username);
-        }
-      }
-      renderAuthHeader();
-      render();
-    }
-
-    // Listen for auth changes
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        currentUser = session.user;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, chips_balance')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          currentUser.username = profile.username;
-          currentUser.chips_balance = profile.chips_balance;
-        }
-        if (currentUser.username) {
-          state.name = currentUser.username;
-          localStorage.setItem('pokerName', currentUser.username);
-        }
-        hideAuthModal();
-        renderAuthHeader();
-        render();
-      } else if (event === 'SIGNED_OUT') {
-        currentUser = null;
-        renderAuthHeader();
-        render();
-      }
-    });
-
-    function renderAuthHeader() {
-      const header = document.getElementById('authHeader');
-      if (currentUser) {
-        const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'Player';
-        const initial = displayName.charAt(0).toUpperCase();
-        header.innerHTML = `
-          <div class="auth-buttons">
-            <div class="user-menu">
-              <div class="user-display" id="userDisplay">
-                <div class="user-avatar">${initial}</div>
-                <span class="user-name">${displayName}</span>
-              </div>
-              <div class="user-dropdown" id="userDropdown">
-                <div class="dropdown-item">👤 Profile</div>
-                <div class="dropdown-item logout" id="logoutBtn">🚪 Log Out</div>
-              </div>
-            </div>
-          </div>
-        `;
-        // Attach dropdown events
-        const userDisplay = document.getElementById('userDisplay');
-        const dropdown = document.getElementById('userDropdown');
-        const logoutBtn = document.getElementById('logoutBtn');
-        
-        userDisplay.onclick = () => dropdown.classList.toggle('show');
-        document.addEventListener('click', (e) => {
-          if (!e.target.closest('.user-menu')) dropdown.classList.remove('show');
-        });
-        logoutBtn.onclick = async () => {
-          await sb.auth.signOut();
-          currentUser = null;
-          renderAuthHeader();
-          render();
-        };
-      } else {
-        header.innerHTML = `
-          <div class="auth-buttons">
-            <button class="auth-btn auth-btn-login" id="loginBtn">Log In</button>
-            <button class="auth-btn auth-btn-signup" id="signupBtn">Sign Up</button>
-          </div>
-        `;
-        document.getElementById('loginBtn').onclick = () => showAuthModal('login');
-        document.getElementById('signupBtn').onclick = () => showAuthModal('signup');
-      }
-    }
-
-    function showAuthModal(mode) {
-      authMode = mode;
-      const modal = document.getElementById('authModal');
-      const subtitle = document.getElementById('authSubtitle');
-      const usernameField = document.getElementById('usernameField');
-      const phoneField = document.getElementById('phoneField');
-      const confirmField = document.getElementById('confirmField');
-      const submitBtn = document.getElementById('authSubmit');
-      const forgotLink = document.getElementById('forgotLink');
-      const tabs = document.querySelectorAll('.auth-tab');
-      
-      document.getElementById('authError').classList.add('hidden');
-      document.getElementById('authSuccess').classList.add('hidden');
-      
-      tabs.forEach(t => t.classList.remove('active'));
-      
-      if (mode === 'login') {
-        subtitle.textContent = 'Welcome back!';
-        usernameField.classList.add('hidden');
-        phoneField.classList.add('hidden');
-        confirmField.classList.add('hidden');
-        submitBtn.textContent = 'Log In';
-        forgotLink.classList.remove('hidden');
-        tabs[0].classList.add('active');
-      } else if (mode === 'signup') {
-        subtitle.textContent = 'Create your account';
-        usernameField.classList.remove('hidden');
-        phoneField.classList.remove('hidden');
-        confirmField.classList.remove('hidden');
-        submitBtn.textContent = 'Sign Up';
-        forgotLink.classList.add('hidden');
-        tabs[1].classList.add('active');
-      } else if (mode === 'forgot') {
-        subtitle.textContent = 'Reset your password';
-        usernameField.classList.add('hidden');
-        phoneField.classList.add('hidden');
-        confirmField.classList.add('hidden');
-        submitBtn.textContent = 'Send Reset Email';
-        forgotLink.classList.add('hidden');
-      }
-      
-      modal.classList.add('show');
-    }
-
-    function hideAuthModal() {
-      document.getElementById('authModal').classList.remove('show');
-    }
-
-    // Auth form handling
-    document.getElementById('authClose').onclick = hideAuthModal;
-    document.getElementById('authModal').onclick = (e) => {
-      if (e.target.id === 'authModal') hideAuthModal();
-    };
-
-    document.querySelectorAll('.auth-tab').forEach(tab => {
-      tab.onclick = () => showAuthModal(tab.dataset.tab);
-    });
-
-    document.getElementById('forgotLink').onclick = () => showAuthModal('forgot');
-
-    document.getElementById('authForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('authEmail').value;
-      const password = document.getElementById('authPassword').value;
-      const errorEl = document.getElementById('authError');
-      const successEl = document.getElementById('authSuccess');
-      const submitBtn = document.getElementById('authSubmit');
-      
-      errorEl.classList.add('hidden');
-      successEl.classList.add('hidden');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Loading...';
-
-      try {
-        if (authMode === 'signup') {
-          const username = document.getElementById('authUsername').value;
-          const phone = document.getElementById('authPhone').value;
-          const confirm = document.getElementById('authConfirm').value;
-          
-          if (!username.trim()) {
-            throw new Error('Username is required');
-          }
-          if (password !== confirm) {
-            throw new Error('Passwords do not match');
-          }
-          if (password.length < 6) {
-            throw new Error('Password must be at least 6 characters');
-          }
-          
-          const { data, error } = await sb.auth.signUp({
-            email,
-            password,
-            options: {
-              data: { username, phone }
-            }
-          });
-          
-          if (error) throw error;
-          
-          successEl.textContent = 'Account created! Check your email to verify.';
-          successEl.classList.remove('hidden');
-          
-        } else if (authMode === 'login') {
-          const { data, error } = await sb.auth.signInWithPassword({
-            email,
-            password
-          });
-          
-          if (error) throw error;
-          // Auth state change handler will update UI
-          
-        } else if (authMode === 'forgot') {
-          const { error } = await sb.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin
-          });
-          
-          if (error) throw error;
-          
-          successEl.textContent = 'Password reset email sent! Check your inbox.';
-          successEl.classList.remove('hidden');
-        }
-      } catch (err) {
-        errorEl.textContent = err.message;
-        errorEl.classList.remove('hidden');
-      }
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = authMode === 'signup' ? 'Sign Up' : authMode === 'forgot' ? 'Send Reset Email' : 'Log In';
-    };
-
-    // Socket and game logic
     const socket = io();
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
     function playSound(type) {
       try {
         const osc = audioCtx.createOscillator();
@@ -480,52 +144,22 @@
         else if (type === 'click') { osc.frequency.value = 800; gain.gain.value = 0.1; osc.start(); osc.stop(audioCtx.currentTime + 0.05); }
       } catch(e) {}
     }
-
     const SEAT_POSITIONS = {
-      2: [[50,85],[50,15]],
-      3: [[50,85],[15,50],[85,50]],
-      4: [[50,85],[12,50],[50,15],[88,50]],
-      5: [[50,85],[12,65],[20,20],[80,20],[88,65]],
-      6: [[50,85],[12,65],[15,25],[50,10],[85,25],[88,65]],
-      7: [[50,85],[12,65],[12,35],[30,12],[70,12],[88,35],[88,65]],
-      8: [[50,85],[15,70],[10,42],[22,15],[50,8],[78,15],[90,42],[85,70]],
+      2: [[50,85],[50,15]], 3: [[50,85],[15,50],[85,50]], 4: [[50,85],[12,50],[50,15],[88,50]],
+      5: [[50,85],[12,65],[20,20],[80,20],[88,65]], 6: [[50,85],[12,65],[15,25],[50,10],[85,25],[88,65]],
+      7: [[50,85],[12,65],[12,35],[30,12],[70,12],[88,35],[88,65]], 8: [[50,85],[15,70],[10,42],[22,15],[50,8],[78,15],[90,42],[85,70]],
       9: [[50,85],[15,70],[10,45],[18,18],[50,8],[82,18],[90,45],[85,70],[50,95]]
     };
-
     const BLINDS = [[1,2],[2,4],[5,10],[10,20],[25,50],[50,100],[100,200],[500,1000]];
     const SUIT_SYM = { h:'♥', d:'♦', c:'♣', s:'♠' };
-
-    let state = {
-      screen:'lobby',
-      tab:'browse',
-      name: localStorage.getItem('pokerName') || '',
-      tableCode:'',
-      maxSeats:6,
-      blindsIdx:2,
-      buyIn:1000,
-      seatIdx:-1,
-      isHost:false,
-      gameState:null,
-      seats:[],
-      phase:'waiting',
-      showRaise:false,
-      raiseAmt:0,
-      chatMessages:[],
-      actionLog:[],
-      winner:null,
-      tables:[],
-      sittingOut:false
-    };
-
+    let state = { screen:'lobby', tab:'browse', name:localStorage.getItem('pokerName')||'', tableCode:'', maxSeats:6, blindsIdx:2, buyIn:1000, seatIdx:-1, isHost:false, gameState:null, seats:[], phase:'waiting', showRaise:false, raiseAmt:0, chatMessages:[], actionLog:[], winner:null, tables:[], sittingOut:false };
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
-
     function renderCard(card, small=false, hidden=false) {
       if (!card || hidden || !card.suit) return '<div class="card '+(small?'small':'')+' hidden"></div>';
       const color = (card.suit==='h'||card.suit==='d') ? 'red' : 'black';
       const rank = card.rank==='T' ? '10' : card.rank;
       return '<div class="card '+(small?'small':'')+' '+color+'"><span>'+rank+'</span><span>'+SUIT_SYM[card.suit]+'</span></div>';
     }
-
     function render() {
       const app = document.getElementById('app');
       if (state.screen === 'lobby') app.innerHTML = renderLobby();
@@ -533,18 +167,14 @@
       else if (state.screen === 'game') app.innerHTML = renderGame();
       attachEvents();
     }
-
     function renderLobby() {
       const [sb,bb] = BLINDS[state.blindsIdx];
-      const displayName = currentUser?.username || state.name;
-      return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="lobby-container"><div class="card-panel"><div class="panel-title"><span>🎮</span> Active Tables <button class="refresh-btn" id="refreshBtn">🔄</button></div><div class="tables-list">'+(state.tables.length===0?'<div class="no-tables">No active tables. Create one!</div>':state.tables.map(t=>'<div class="table-row"><div class="table-info"><div class="table-name">'+t.hostName+'\'s Table</div><div class="table-details">'+t.blinds+' blinds • $'+fmt(t.buyIn)+' buy-in'+(t.inProgress?' • In Progress':'')+'</div></div><div class="table-seats">'+Array(t.maxSeats).fill(0).map((_,i)=>'<div class="seat-dot '+(i<t.playerCount?'filled':'')+'"></div>').join('')+'</div><button class="join-btn" data-code="'+t.code+'" '+(t.playerCount>=t.maxSeats?'disabled':'')+'>'+(t.playerCount>=t.maxSeats?'Full':'Join')+'</button></div>').join(''))+'</div></div><div class="card-panel"><div class="tabs"><button class="tab '+(state.tab==='create'?'active':'')+'" data-tab="create">Create Table</button><button class="tab '+(state.tab==='join'?'active':'')+'" data-tab="join">Join by Code</button></div><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+displayName+'" '+(currentUser?'readonly style="opacity:0.7"':'')+'>'+(state.tab==='create'?'<label>Table Size</label><select id="maxSeats">'+[2,3,4,5,6,7,8,9].map(n=>'<option value="'+n+'" '+(state.maxSeats===n?'selected':'')+'>'+n+' Seats</option>').join('')+'</select><label>Blinds</label><select id="blinds">'+BLINDS.map((b,i)=>'<option value="'+i+'" '+(state.blindsIdx===i?'selected':'')+'>$'+b[0]+' / $'+b[1]+'</option>').join('')+'</select><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="'+(bb*20)+'" max="'+(bb*200)+'" step="'+(bb*10)+'" value="'+state.buyIn+'"><button class="btn btn-primary" id="createBtn">CREATE TABLE</button>':'<label>Table Code</label><input type="text" id="tableCode" placeholder="Enter 6-digit code..." value="'+state.tableCode+'" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:1.3rem"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinBtn">JOIN TABLE</button>')+'</div></div><p class="footer">AllIn27.com</p></div>';
+      return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="lobby-container"><div class="card-panel"><div class="panel-title"><span>🎮</span> Active Tables <button class="refresh-btn" id="refreshBtn">🔄</button></div><div class="tables-list">'+(state.tables.length===0?'<div class="no-tables">No active tables. Create one!</div>':state.tables.map(t=>'<div class="table-row"><div class="table-info"><div class="table-name">'+t.hostName+'\'s Table</div><div class="table-details">'+t.blinds+' blinds • $'+fmt(t.buyIn)+' buy-in'+(t.inProgress?' • In Progress':'')+'</div></div><div class="table-seats">'+Array(t.maxSeats).fill(0).map((_,i)=>'<div class="seat-dot '+(i<t.playerCount?'filled':'')+'"></div>').join('')+'</div><button class="join-btn" data-code="'+t.code+'" '+(t.playerCount>=t.maxSeats?'disabled':'')+'>'+(t.playerCount>=t.maxSeats?'Full':'Join')+'</button></div>').join(''))+'</div></div><div class="card-panel"><div class="tabs"><button class="tab '+(state.tab==='create'?'active':'')+'" data-tab="create">Create Table</button><button class="tab '+(state.tab==='join'?'active':'')+'" data-tab="join">Join by Code</button></div><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'">'+(state.tab==='create'?'<label>Table Size</label><select id="maxSeats">'+[2,3,4,5,6,7,8,9].map(n=>'<option value="'+n+'" '+(state.maxSeats===n?'selected':'')+'>'+n+' Seats</option>').join('')+'</select><label>Blinds</label><select id="blinds">'+BLINDS.map((b,i)=>'<option value="'+i+'" '+(state.blindsIdx===i?'selected':'')+'>$'+b[0]+' / $'+b[1]+'</option>').join('')+'</select><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="'+(bb*20)+'" max="'+(bb*200)+'" step="'+(bb*10)+'" value="'+state.buyIn+'"><button class="btn btn-primary" id="createBtn">CREATE TABLE</button>':'<label>Table Code</label><input type="text" id="tableCode" placeholder="Enter 6-digit code..." value="'+state.tableCode+'" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:1.3rem"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinBtn">JOIN TABLE</button>')+'</div></div><p class="footer">AllIn27.com</p></div>';
     }
-
     function renderWaiting() {
       const playerCount = state.seats.filter(s=>s).length;
       return '<div class="game-container">'+renderGameTable()+'<div class="waiting-overlay"><p style="color:#a1a1aa;margin-bottom:.4rem;font-size:.85rem">Share this code with friends:</p><div class="room-code">'+state.tableCode+'</div><p class="waiting-text">Waiting for players... ('+playerCount+'/'+state.maxSeats+')</p><div class="player-list">'+state.seats.map((s,i)=>s?'<div class="player-chip">'+s.name+'</div>':'').join('')+'</div>'+(state.isHost?'<button class="start-btn" id="startBtn" '+(playerCount<2?'disabled':'')+'>'+(playerCount<2?'NEED 2+ PLAYERS':'START GAME')+'</button>':'<p style="color:#71717a;font-size:.85rem">Waiting for host to start...</p>')+'</div></div>';
     }
-
     function renderGameTable() {
       const gs = state.gameState;
       if (!gs) return '<div>Loading...</div>';
@@ -576,7 +206,6 @@
       html += '</div>';
       return html;
     }
-
     function renderGame() {
       const gs = state.gameState;
       if (!gs) return '<div class="game-container">Loading...</div>';
@@ -601,78 +230,28 @@
       html += '</div>';
       return html;
     }
-
     function attachEvents() {
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.onclick = () => { state.tab = tab.dataset.tab; playSound('click'); render(); };
-      });
-      const refreshBtn = document.getElementById('refreshBtn');
-      if (refreshBtn) refreshBtn.onclick = () => { socket.emit('getTables'); playSound('click'); };
-      document.querySelectorAll('.join-btn[data-code]').forEach(btn => {
-        btn.onclick = () => {
-          if (!state.name.trim()) { alert('Enter your name first'); return; }
-          const code = btn.dataset.code;
-          const table = state.tables.find(t=>t.code===code);
-          socket.emit('joinTable', { code, name:state.name, buyIn:table?table.buyIn:state.buyIn });
-          localStorage.setItem('pokerName', state.name);
-          playSound('click');
-        };
-      });
-      const nameInput = document.getElementById('name');
-      if (nameInput && !currentUser) nameInput.oninput = e => state.name = e.target.value;
-      const codeInput = document.getElementById('tableCode');
-      if (codeInput) codeInput.oninput = e => state.tableCode = e.target.value.toUpperCase();
-      const seatsSelect = document.getElementById('maxSeats');
-      if (seatsSelect) seatsSelect.onchange = e => { state.maxSeats = parseInt(e.target.value); render(); };
-      const blindsSelect = document.getElementById('blinds');
-      if (blindsSelect) blindsSelect.onchange = e => { state.blindsIdx = parseInt(e.target.value); const [sb,bb] = BLINDS[state.blindsIdx]; state.buyIn = bb*100; render(); };
-      const buyInSlider = document.getElementById('buyIn');
-      if (buyInSlider) buyInSlider.oninput = e => { state.buyIn = parseInt(e.target.value); render(); };
-      const createBtn = document.getElementById('createBtn');
-      if (createBtn) createBtn.onclick = () => {
-        if (!state.name.trim()) { alert('Enter your name'); return; }
-        socket.emit('createTable', { name:state.name, maxSeats:state.maxSeats, blinds:BLINDS[state.blindsIdx], buyIn:state.buyIn });
-        localStorage.setItem('pokerName', state.name);
-        playSound('click');
-      };
-      const joinBtn = document.getElementById('joinBtn');
-      if (joinBtn) joinBtn.onclick = () => {
-        if (!state.name.trim()) { alert('Enter your name'); return; }
-        if (!state.tableCode.trim()) { alert('Enter table code'); return; }
-        socket.emit('joinTable', { code:state.tableCode, name:state.name, buyIn:state.buyIn });
-        localStorage.setItem('pokerName', state.name);
-        playSound('click');
-      };
-      const startBtn = document.getElementById('startBtn');
-      if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
-      const leaveBtn = document.getElementById('leaveBtn');
-      if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; socket.emit('getTables'); render(); };
-      const sitInBtn = document.getElementById('sitInBtn');
-      if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
-      document.querySelectorAll('[data-action]').forEach(btn => {
-        btn.onclick = () => {
-          const action = btn.dataset.action;
-          if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); state.showRaise=false; }
-          else { socket.emit('action',{action}); }
-          playSound(action);
-        };
-      });
-      const raiseToggle = document.getElementById('raiseToggle');
-      if (raiseToggle) raiseToggle.onclick = () => { state.showRaise=!state.showRaise; if(state.showRaise){const gs=state.gameState;state.raiseAmt=gs.currentBet+gs.bb;} playSound('click'); render(); };
-      const raiseSlider = document.getElementById('raiseSlider');
-      if (raiseSlider) raiseSlider.oninput = e => { state.raiseAmt=parseInt(e.target.value); render(); };
-      const raiseMinus = document.getElementById('raiseMinus');
-      if (raiseMinus) raiseMinus.onclick = () => { const gs=state.gameState; state.raiseAmt=Math.max(gs.currentBet+gs.bb,(state.raiseAmt||gs.currentBet+gs.bb)-gs.bb); playSound('click'); render(); };
-      const raisePlus = document.getElementById('raisePlus');
-      if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
-      document.querySelectorAll('[data-preset]').forEach(btn => {
-        btn.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; const mult=parseFloat(btn.dataset.preset); state.raiseAmt=Math.min(maxRaise,Math.max(gs.currentBet+gs.bb,Math.floor(gs.pot*mult))); playSound('click'); render(); };
-      });
-      const chatInput = document.getElementById('chatInput');
-      if (chatInput) chatInput.onkeydown = e => { if (e.key==='Enter'&&chatInput.value.trim()) { socket.emit('chat',{message:chatInput.value}); chatInput.value=''; } };
+      document.querySelectorAll('.tab').forEach(tab => { tab.onclick = () => { state.tab = tab.dataset.tab; playSound('click'); render(); }; });
+      const refreshBtn = document.getElementById('refreshBtn'); if (refreshBtn) refreshBtn.onclick = () => { socket.emit('getTables'); playSound('click'); };
+      document.querySelectorAll('.join-btn[data-code]').forEach(btn => { btn.onclick = () => { if (!state.name.trim()) { alert('Enter your name first'); return; } const code = btn.dataset.code; const table = state.tables.find(t=>t.code===code); socket.emit('joinTable', { code, name:state.name, buyIn:table?table.buyIn:state.buyIn }); localStorage.setItem('pokerName', state.name); playSound('click'); }; });
+      const nameInput = document.getElementById('name'); if (nameInput) nameInput.oninput = e => state.name = e.target.value;
+      const codeInput = document.getElementById('tableCode'); if (codeInput) codeInput.oninput = e => state.tableCode = e.target.value.toUpperCase();
+      const seatsSelect = document.getElementById('maxSeats'); if (seatsSelect) seatsSelect.onchange = e => { state.maxSeats = parseInt(e.target.value); render(); };
+      const blindsSelect = document.getElementById('blinds'); if (blindsSelect) blindsSelect.onchange = e => { state.blindsIdx = parseInt(e.target.value); const [sb,bb] = BLINDS[state.blindsIdx]; state.buyIn = bb*100; render(); };
+      const buyInSlider = document.getElementById('buyIn'); if (buyInSlider) buyInSlider.oninput = e => { state.buyIn = parseInt(e.target.value); render(); };
+      const createBtn = document.getElementById('createBtn'); if (createBtn) createBtn.onclick = () => { if (!state.name.trim()) { alert('Enter your name'); return; } socket.emit('createTable', { name:state.name, maxSeats:state.maxSeats, blinds:BLINDS[state.blindsIdx], buyIn:state.buyIn }); localStorage.setItem('pokerName', state.name); playSound('click'); };
+      const joinBtn = document.getElementById('joinBtn'); if (joinBtn) joinBtn.onclick = () => { if (!state.name.trim()) { alert('Enter your name'); return; } if (!state.tableCode.trim()) { alert('Enter table code'); return; } socket.emit('joinTable', { code:state.tableCode, name:state.name, buyIn:state.buyIn }); localStorage.setItem('pokerName', state.name); playSound('click'); };
+      const startBtn = document.getElementById('startBtn'); if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
+      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; socket.emit('getTables'); render(); };
+      const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
+      document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); state.showRaise=false; } else { socket.emit('action',{action}); } playSound(action); }; });
+      const raiseToggle = document.getElementById('raiseToggle'); if (raiseToggle) raiseToggle.onclick = () => { state.showRaise=!state.showRaise; if(state.showRaise){const gs=state.gameState;state.raiseAmt=gs.currentBet+gs.bb;} playSound('click'); render(); };
+      const raiseSlider = document.getElementById('raiseSlider'); if (raiseSlider) raiseSlider.oninput = e => { state.raiseAmt=parseInt(e.target.value); render(); };
+      const raiseMinus = document.getElementById('raiseMinus'); if (raiseMinus) raiseMinus.onclick = () => { const gs=state.gameState; state.raiseAmt=Math.max(gs.currentBet+gs.bb,(state.raiseAmt||gs.currentBet+gs.bb)-gs.bb); playSound('click'); render(); };
+      const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
+      document.querySelectorAll('[data-preset]').forEach(btn => { btn.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; const mult=parseFloat(btn.dataset.preset); state.raiseAmt=Math.min(maxRaise,Math.max(gs.currentBet+gs.bb,Math.floor(gs.pot*mult))); playSound('click'); render(); }; });
+      const chatInput = document.getElementById('chatInput'); if (chatInput) chatInput.onkeydown = e => { if (e.key==='Enter'&&chatInput.value.trim()) { socket.emit('chat',{message:chatInput.value}); chatInput.value=''; } };
     }
-
-    // Socket events
     socket.on('tableList', tables => { state.tables=tables; if(state.screen==='lobby')render(); });
     socket.on('tableCreated', ({code,seatIdx}) => { state.tableCode=code; state.seatIdx=seatIdx; state.isHost=true; state.screen='waiting'; state.sittingOut=false; render(); });
     socket.on('joinedTable', ({code,seatIdx,sittingOut}) => { state.tableCode=code; state.seatIdx=seatIdx; state.sittingOut=sittingOut; state.screen='waiting'; render(); });
@@ -689,9 +268,7 @@
     socket.on('chatMessage', ({name,message}) => { state.chatMessages.push({name,message}); render(); const chatEl=document.getElementById('chatMessages'); if(chatEl)chatEl.scrollTop=chatEl.scrollHeight; });
     socket.on('error', ({message}) => { alert(message); });
     socket.on('gameOver', ({winner}) => { alert('Game Over! '+winner+' wins!'); state.screen='lobby'; socket.emit('getTables'); render(); });
-
-    // Initialize
-    checkSession();
+    render();
     socket.emit('getTables');
   </script>
 </body>
