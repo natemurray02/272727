@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Auth Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial; max-width: 400px; margin: 50px auto; padding: 20px; }
+    input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+    button { width: 100%; padding: 10px; margin: 5px 0; cursor: pointer; }
+    #status { padding: 20px; margin: 20px 0; border-radius: 5px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+  </style>
+</head>
+<body>
+  <h1>Supabase Auth Test</h1>
+  
+  <div id="status" class="info">Checking connection...</div>
+  
+  <div id="auth-form">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="signUp()">Sign Up</button>
+    <button onclick="signIn()">Sign In</button>
+    <button onclick="signOut()">Sign Out</button>
+    <button onclick="checkSession()">Check Session</button>
+  </div>
+  
+  <div id="log" style="margin-top: 20px; font-family: monospace; font-size: 12px;"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bWlkd3drd3JvY2l4bXJzZ2l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2ODQ1NzgsImV4cCI6MjA4NDI2MDU3OH0.2MdNumOLrErGknOE4SqLzs1ZIs6HOfp2JZpuz5UIhrs';
+    
+    // Create client - using different variable name to avoid conflict
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    function log(msg) {
+      console.log(msg);
+      document.getElementById('log').innerHTML += msg + '<br>';
+    }
+    
+    function setStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = type;
+    }
+    
+    // Test connection on load
+    async function testConnection() {
+      try {
+        log('Testing Supabase connection...');
+        const { data, error } = await client.auth.getSession();
+        if (error) {
+          setStatus('Connection error: ' + error.message, 'error');
+          log('Error: ' + error.message);
+        } else {
+          setStatus('Connected! Session: ' + (data.session ? 'Active' : 'None'), 'success');
+          log('Connection successful!');
+          if (data.session) {
+            log('Logged in as: ' + data.session.user.email);
+          }
+        }
+      } catch (e) {
+        setStatus('Exception: ' + e.message, 'error');
+        log('Exception: ' + e.message);
+      }
+    }
+    
+    async function signUp() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      log('Signing up with: ' + email);
+      
+      try {
+        const { data, error } = await client.auth.signUp({ email, password });
+        if (error) {
+          setStatus('Sign up error: ' + error.message, 'error');
+          log('Error: ' + error.message);
+        } else {
+          setStatus('Sign up successful! Check email for confirmation.', 'success');
+          log('Sign up successful! User: ' + JSON.stringify(data.user?.email));
+        }
+      } catch (e) {
+        setStatus('Exception: ' + e.message, 'error');
+        log('Exception: ' + e.message);
+      }
+    }
+    
+    async function signIn() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      log('Signing in with: ' + email);
+      
+      try {
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+        if (error) {
+          setStatus('Sign in error: ' + error.message, 'error');
+          log('Error: ' + error.message);
+        } else {
+          setStatus('Signed in as: ' + data.user.email, 'success');
+          log('Sign in successful!');
+        }
+      } catch (e) {
+        setStatus('Exception: ' + e.message, 'error');
+        log('Exception: ' + e.message);
+      }
+    }
+    
+    async function signOut() {
+      log('Signing out...');
+      try {
+        const { error } = await client.auth.signOut();
+        if (error) {
+          setStatus('Sign out error: ' + error.message, 'error');
+        } else {
+          setStatus('Signed out', 'info');
+          log('Signed out successfully');
+        }
+      } catch (e) {
+        setStatus('Exception: ' + e.message, 'error');
+      }
+    }
+    
+    async function checkSession() {
+      log('Checking session...');
+      try {
+        const { data, error } = await client.auth.getSession();
+        if (data.session) {
+          setStatus('Logged in as: ' + data.session.user.email, 'success');
+          log('Session active: ' + data.session.user.email);
+        } else {
+          setStatus('No active session', 'info');
+          log('No session');
+        }
+      } catch (e) {
+        setStatus('Exception: ' + e.message, 'error');
+      }
+    }
+    
+    // Run test on load
+    testConnection();
+  </script>
+</body>
+</html>
