@@ -30,7 +30,8 @@ const shuffle = (arr) => {
 function formatCard(card) {
   if (!card || !card.rank || !card.suit) return '??';
   const suitSymbols = { h: '♥', d: '♦', c: '♣', s: '♠' };
-  return `${card.rank}${suitSymbols[card.suit] || card.suit}`;
+  const rank = card.rank === 'T' ? '10' : card.rank;
+  return `${rank}${suitSymbols[card.suit] || card.suit}`;
 }
 
 function formatCards(cards) {
@@ -387,6 +388,8 @@ function showdown(table) {
     const winner = active[0];
     const winnerIdx = gs.players.indexOf(winner);
     winner.chips += gs.pot;
+    // Winner does NOT have to show cards when everyone folded
+    // They can optionally show via the showCards button
     return {
       winners: [{ player: winner, amount: gs.pot }],
       hand: 'Everyone folded',
@@ -434,7 +437,7 @@ function showdown(table) {
       const winnerIdx = gs.players.indexOf(w);
       const amount = share + (i === 0 ? remainder : 0);
       w.chips += amount;
-      w.showCards = true;
+      w.showCards = true;  // Winners at showdown must show
       winnerAmounts[winnerIdx] = (winnerAmounts[winnerIdx] || 0) + amount;
     });
     
@@ -525,6 +528,7 @@ function processAction(table, seatIdx, action, amount = 0) {
       winner,
       hand: 'Everyone folded',
       amount: gs.pot,
+      noShow: true,
       potResults: [{ amount: gs.pot, winners: [gs.players.indexOf(winner)] }]
     };
   }
@@ -568,6 +572,7 @@ function getPublicGameState(table, forPlayerId = null) {
     if (!p) return null;
     const isMe = p.id === forPlayerId;
     const isShowdown = gs.phase === 'showdown';
+    // Show cards if: it's me, OR at showdown AND (winner who must show OR voluntarily showed)
     const shouldShowCards = isMe || (isShowdown && p.wentToShowdown && (p.showCards || p.voluntaryShow));
     
     return {
@@ -581,7 +586,8 @@ function getPublicGameState(table, forPlayerId = null) {
       seatIdx: i,
       isMe,
       wentToShowdown: p.wentToShowdown || false,
-      canShow: isMe && isShowdown && !p.showCards && !p.voluntaryShow
+      // Can show if: it's me, at showdown, haven't already shown, and (won by fold OR went to showdown but lost)
+      canShow: isMe && isShowdown && !p.showCards && !p.voluntaryShow && p.cards && p.cards.length > 0
     };
   });
   
@@ -870,7 +876,7 @@ io.on('connection', (socket) => {
     
     if (result === 'continue') {
       const phase = table.gameState.phase;
-      io.to(table.code).emit('phaseChange', { phase });
+      io.to(table.code).emit('phaseChange', { phase, community: table.gameState.community });
       io.to(table.code).emit('sound', { type: 'deal' });
       io.to(table.code).emit('collectBets');
     }
@@ -881,11 +887,13 @@ io.on('connection', (socket) => {
       
       io.to(table.code).emit('collectBets');
       
-      // Build winner info with cards for action log (only if cards were shown)
+      // Build winner info with cards for action log
+      // Only include cards if it was NOT a "everyone folded" situation
       const winnersWithCards = winners.map(w => {
         const winnerIdx = gs.players.indexOf(w.player);
         const winnerPlayer = gs.players[winnerIdx];
-        const showCards = winnerPlayer && (winnerPlayer.showCards || winnerPlayer.wentToShowdown) && !result.noShow;
+        // Show cards only if it went to actual showdown (not everyone folded)
+        const showCards = !result.noShow && winnerPlayer && winnerPlayer.wentToShowdown;
         return {
           name: w.player.name,
           seatIdx: winnerIdx,
@@ -894,10 +902,25 @@ io.on('connection', (socket) => {
         };
       });
       
+      // Also include all showdown players' cards in a separate array for the log
+      const showdownPlayers = [];
+      if (!result.noShow) {
+        gs.players.forEach((p, i) => {
+          if (p && p.wentToShowdown && p.cards && p.cards.length > 0) {
+            showdownPlayers.push({
+              name: p.name,
+              seatIdx: i,
+              cards: formatCards(p.cards)
+            });
+          }
+        });
+      }
+      
       io.to(table.code).emit('handComplete', {
         winners: winnersWithCards,
         hand: result.hand,
-        potResults: result.potResults
+        potResults: result.potResults,
+        showdownPlayers: showdownPlayers  // All players who went to showdown
       });
       io.to(table.code).emit('sound', { type: 'win' });
       
