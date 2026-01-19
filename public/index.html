@@ -141,8 +141,19 @@
     .chat-box{position:fixed;bottom:100px;left:.5rem;width:220px;height:180px;background:linear-gradient(180deg,rgba(9,9,11,.95),rgba(9,9,11,.98));border-radius:10px;border:1px solid rgba(251,191,36,.2);z-index:45;display:flex;flex-direction:column}
     .chat-header{padding:.4rem .6rem;border-bottom:1px solid rgba(251,191,36,.15);font-size:.7rem;color:#fbbf24;font-weight:600}
     .chat-messages{flex:1;overflow-y:auto;padding:.4rem;font-size:.65rem}
-    .chat-msg{margin-bottom:.25rem;color:#d4d4d8;line-height:1.3}
+    .chat-msg{margin-bottom:.4rem;color:#d4d4d8;line-height:1.3;position:relative;padding:2px 4px;border-radius:4px}
+    .chat-msg:hover{background:rgba(255,255,255,.05)}
     .chat-msg .name{color:#fbbf24;font-weight:600}
+    .chat-msg .reactions{display:flex;gap:2px;margin-top:2px;flex-wrap:wrap}
+    .chat-msg .reaction{font-size:.6rem;padding:1px 4px;background:rgba(255,255,255,.1);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:2px}
+    .chat-msg .reaction:hover{background:rgba(255,255,255,.2)}
+    .chat-msg .reaction.mine{background:rgba(251,191,36,.2);border:1px solid rgba(251,191,36,.3)}
+    .chat-msg .reaction-count{font-size:.55rem;color:#a1a1aa}
+    .chat-msg .react-btn{opacity:0;position:absolute;right:2px;top:2px;font-size:.65rem;cursor:pointer;padding:2px 4px;background:rgba(0,0,0,.5);border-radius:4px;transition:opacity .2s}
+    .chat-msg:hover .react-btn{opacity:1}
+    .reaction-picker{position:absolute;bottom:100%;right:0;background:#18181b;border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:4px;display:flex;gap:2px;z-index:100}
+    .reaction-picker span{font-size:.9rem;cursor:pointer;padding:2px 4px;border-radius:4px}
+    .reaction-picker span:hover{background:rgba(255,255,255,.1)}
     .chat-input-container{padding:.4rem;border-top:1px solid rgba(251,191,36,.15)}
     .chat-input-container input{width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(251,191,36,.2);border-radius:6px;padding:.4rem .6rem;color:#fff;font-size:.7rem;margin:0}
     .chat-input-container input:focus{outline:none;border-color:#fbbf24}
@@ -308,10 +319,36 @@
       isSpectator: false,
       revealedCards: [false, false],
       twoSevenGame: false,
-      twoSevenBounty: 5  // Default 5 BB per player
+      twoSevenBounty: 5,
+      reactionPickerIdx: null  // Which message has reaction picker open
     };
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
+    
+    const REACTIONS = ['❤️', '👍', '👎', '😂', '‼️', '❓', '😢'];
+    
+    function renderChatReactionPicker() {
+      // Remove existing picker
+      document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+      
+      if (state.reactionPickerIdx !== null) {
+        const msgEl = document.querySelector('.chat-msg[data-msg-idx="'+state.reactionPickerIdx+'"]');
+        if (msgEl) {
+          const picker = document.createElement('div');
+          picker.className = 'reaction-picker';
+          picker.innerHTML = REACTIONS.map(e => '<span data-emoji="'+e+'">'+e+'</span>').join('');
+          picker.onclick = (e) => {
+            e.stopPropagation();
+            if (e.target.dataset.emoji) {
+              socket.emit('chatReaction', { msgIdx: state.reactionPickerIdx, emoji: e.target.dataset.emoji });
+              state.reactionPickerIdx = null;
+              renderChatReactionPicker();
+            }
+          };
+          msgEl.appendChild(picker);
+        }
+      }
+    }
     
     // Format card for action log (e.g., "A♠" or "K♥")
     function fmtCard(card) {
@@ -486,7 +523,18 @@
       let html = '<div class="game-container">'+renderGameTable();
       
       // CHAT: Separate messages div from input - input uses stored value
-      html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('')+'</div><div class="chat-input-container"><input type="text" id="chatInput" placeholder="Type a message..." value="'+chatInputValue.replace(/"/g, '&quot;')+'"></div></div>';
+      html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map((m,idx)=>{
+        let reactionsHtml = '';
+        if (m.reactions && Object.keys(m.reactions).length > 0) {
+          reactionsHtml = '<div class="reactions">';
+          for (const [emoji, users] of Object.entries(m.reactions)) {
+            const isMine = users.includes(state.name);
+            reactionsHtml += '<span class="reaction'+(isMine?' mine':'')+'" data-msg-idx="'+idx+'" data-emoji="'+emoji+'">'+emoji+'<span class="reaction-count">'+users.length+'</span></span>';
+          }
+          reactionsHtml += '</div>';
+        }
+        return '<div class="chat-msg" data-msg-idx="'+idx+'"><span class="react-btn" data-msg-idx="'+idx+'">😀</span><span class="name">'+m.name+':</span> '+m.message+reactionsHtml+'</div>';
+      }).join('')+'</div><div class="chat-input-container"><input type="text" id="chatInput" placeholder="Type a message..." value="'+chatInputValue.replace(/"/g, '&quot;')+'"></div></div>';
       
       html += '<div class="action-log"><div class="log-header">📋 Action Log</div><div class="log-messages" id="logMessages">'+state.actionLog.map(m=>'<div class="log-msg '+m.type+'">'+m.text+'</div>').join('')+'</div></div>';
       if (state.sittingOut) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
@@ -645,6 +693,33 @@
           chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
         }
       }
+      
+      // Reaction button click - show picker
+      document.querySelectorAll('.react-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const msgIdx = parseInt(btn.dataset.msgIdx);
+          state.reactionPickerIdx = state.reactionPickerIdx === msgIdx ? null : msgIdx;
+          renderChatReactionPicker();
+        };
+      });
+      
+      // Existing reaction click - toggle
+      document.querySelectorAll('.reaction').forEach(r => {
+        r.onclick = () => {
+          const msgIdx = parseInt(r.dataset.msgIdx);
+          const emoji = r.dataset.emoji;
+          socket.emit('chatReaction', { msgIdx, emoji });
+        };
+      });
+      
+      // Close reaction picker when clicking elsewhere
+      document.addEventListener('click', () => {
+        if (state.reactionPickerIdx !== null) {
+          state.reactionPickerIdx = null;
+          renderChatReactionPicker();
+        }
+      });
     }
     
     // Check for new community cards and log them
@@ -785,14 +860,55 @@
     
     // CHAT: Only update messages, don't touch input
     socket.on('chatMessage', ({name,message}) => { 
-      state.chatMessages.push({name,message}); 
+      state.chatMessages.push({name, message, reactions: {}}); 
       // Only update the messages div, not the whole thing
       const chatEl = document.getElementById('chatMessages'); 
       if (chatEl) {
-        chatEl.innerHTML = state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('');
-        chatEl.scrollTop = chatEl.scrollHeight; 
+        updateChatMessages();
       }
     });
+    
+    socket.on('chatReactionUpdate', ({msgIdx, reactions}) => {
+      if (state.chatMessages[msgIdx]) {
+        state.chatMessages[msgIdx].reactions = reactions;
+        updateChatMessages();
+      }
+    });
+    
+    function updateChatMessages() {
+      const chatEl = document.getElementById('chatMessages');
+      if (!chatEl) return;
+      chatEl.innerHTML = state.chatMessages.map((m,idx) => {
+        let reactionsHtml = '';
+        if (m.reactions && Object.keys(m.reactions).length > 0) {
+          reactionsHtml = '<div class="reactions">';
+          for (const [emoji, users] of Object.entries(m.reactions)) {
+            const isMine = users.includes(state.name);
+            reactionsHtml += '<span class="reaction'+(isMine?' mine':'')+'" data-msg-idx="'+idx+'" data-emoji="'+emoji+'">'+emoji+'<span class="reaction-count">'+users.length+'</span></span>';
+          }
+          reactionsHtml += '</div>';
+        }
+        return '<div class="chat-msg" data-msg-idx="'+idx+'"><span class="react-btn" data-msg-idx="'+idx+'">😀</span><span class="name">'+m.name+':</span> '+m.message+reactionsHtml+'</div>';
+      }).join('');
+      chatEl.scrollTop = chatEl.scrollHeight;
+      
+      // Re-attach event listeners
+      document.querySelectorAll('.react-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const msgIdx = parseInt(btn.dataset.msgIdx);
+          state.reactionPickerIdx = state.reactionPickerIdx === msgIdx ? null : msgIdx;
+          renderChatReactionPicker();
+        };
+      });
+      document.querySelectorAll('.reaction').forEach(r => {
+        r.onclick = () => {
+          const msgIdx = parseInt(r.dataset.msgIdx);
+          const emoji = r.dataset.emoji;
+          socket.emit('chatReaction', { msgIdx, emoji });
+        };
+      });
+    }
     
     socket.on('error', ({message}) => { alert(message); });
     socket.on('gameOver', ({winner}) => { alert('Game Over! '+winner+' wins!'); state.screen='lobby'; state.isPrivate=false; state.lastBoardLength=0; chatInputValue=''; socket.emit('getTables'); render(); });
