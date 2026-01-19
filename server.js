@@ -113,7 +113,8 @@ function generateTableCode() {
   return code;
 }
 
-function createTable(hostId, hostName, maxSeats, blinds, buyIn) {
+// UPDATED: Added isPrivate parameter
+function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = false) {
   const code = generateTableCode();
   const table = {
     code,
@@ -123,6 +124,7 @@ function createTable(hostId, hostName, maxSeats, blinds, buyIn) {
     sb: blinds[0],
     bb: blinds[1],
     defaultBuyIn: buyIn,
+    isPrivate,  // NEW: track if table is private
     players: [],
     seats: Array(maxSeats).fill(null),
     gameState: null,
@@ -133,6 +135,7 @@ function createTable(hostId, hostName, maxSeats, blinds, buyIn) {
   return table;
 }
 
+// UPDATED: Include isPrivate in table list
 function getTableList() {
   const list = [];
   tables.forEach((table, code) => {
@@ -144,7 +147,8 @@ function getTableList() {
       maxSeats: table.maxSeats,
       blinds: `$${table.sb}/$${table.bb}`,
       buyIn: table.defaultBuyIn,
-      inProgress: table.handInProgress
+      inProgress: table.handInProgress,
+      isPrivate: table.isPrivate  // NEW: send private status to clients
     });
   });
   return list;
@@ -431,7 +435,9 @@ function getPublicGameState(table, forPlayerId = null) {
     sb: table.sb,
     bb: table.bb,
     maxSeats: table.maxSeats,
-    handInProgress: table.handInProgress
+    handInProgress: table.handInProgress,
+    isPrivate: table.isPrivate,  // NEW: include in game state
+    code: table.code  // NEW: include code so players can share link
   };
 }
 
@@ -451,8 +457,9 @@ io.on('connection', (socket) => {
     socket.emit('tableList', getTableList());
   });
   
-  socket.on('createTable', ({ name, maxSeats, blinds, buyIn }) => {
-    const table = createTable(socket.id, name, maxSeats, blinds, buyIn);
+  // UPDATED: Accept isPrivate parameter
+  socket.on('createTable', ({ name, maxSeats, blinds, buyIn, isPrivate }) => {
+    const table = createTable(socket.id, name, maxSeats, blinds, buyIn, isPrivate || false);
     
     const player = {
       id: socket.id,
@@ -489,20 +496,36 @@ io.on('connection', (socket) => {
     socket.tableCode = table.code;
     socket.seatIdx = 0;
     
-    socket.emit('tableCreated', { code: table.code, seatIdx: 0 });
+    // NEW: Send isPrivate and code back to client for UI display
+    socket.emit('tableCreated', { 
+      code: table.code, 
+      seatIdx: 0, 
+      isPrivate: table.isPrivate 
+    });
+    
     io.to(table.code).emit('tableUpdate', {
       seats: table.seats.map(p => p ? { name: p.name, chips: p.chips, id: p.id } : null),
       gameState: getPublicGameState(table, socket.id),
-      phase: table.phase
+      phase: table.phase,
+      isPrivate: table.isPrivate,
+      code: table.code
     });
     
     broadcastTableList();
   });
   
-  socket.on('joinTable', ({ code, name, buyIn }) => {
+  // UPDATED: Add hasCode parameter for private table access
+  socket.on('joinTable', ({ code, name, buyIn, hasCode }) => {
     const table = tables.get(code.toUpperCase());
     if (!table) {
       socket.emit('error', { message: 'Table not found' });
+      return;
+    }
+    
+    // NEW: Check if private table and user doesn't have code
+    // hasCode = true means they came via direct link or entered code manually
+    if (table.isPrivate && !hasCode) {
+      socket.emit('error', { message: 'This is a private table. You need the table code or link to join.' });
       return;
     }
     
@@ -531,7 +554,12 @@ io.on('connection', (socket) => {
     socket.tableCode = code;
     socket.seatIdx = seatIdx;
     
-    socket.emit('joinedTable', { code, seatIdx, sittingOut: player.sittingOut });
+    socket.emit('joinedTable', { 
+      code, 
+      seatIdx, 
+      sittingOut: player.sittingOut,
+      isPrivate: table.isPrivate
+    });
     
     // Send personalized update to all players
     table.seats.forEach((p, i) => {
@@ -539,7 +567,9 @@ io.on('connection', (socket) => {
         io.to(p.socketId).emit('tableUpdate', {
           seats: table.seats.map(pl => pl ? { name: pl.name, chips: pl.chips, id: pl.id, sittingOut: pl.sittingOut } : null),
           gameState: getPublicGameState(table, p.id),
-          phase: table.phase
+          phase: table.phase,
+          isPrivate: table.isPrivate,
+          code: table.code
         });
       }
     });
@@ -563,7 +593,9 @@ io.on('connection', (socket) => {
           io.to(p.socketId).emit('tableUpdate', {
             seats: table.seats.map(pl => pl ? { name: pl.name, chips: pl.chips, id: pl.id, sittingOut: pl.sittingOut } : null),
             gameState: getPublicGameState(table, p.id),
-            phase: table.phase
+            phase: table.phase,
+            isPrivate: table.isPrivate,
+            code: table.code
           });
         }
       });
@@ -711,7 +743,9 @@ io.on('connection', (socket) => {
           io.to(p.socketId).emit('tableUpdate', {
             seats: table.seats.map(pl => pl ? { name: pl.name, chips: pl.chips, id: pl.id, sittingOut: pl.sittingOut } : null),
             gameState: getPublicGameState(table, p.id),
-            phase: table.phase
+            phase: table.phase,
+            isPrivate: table.isPrivate,
+            code: table.code
           });
         }
       });
