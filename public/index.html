@@ -413,12 +413,18 @@
       }
       
       if (isMyTurn && !state.sittingOut) {
-        html += '<div class="actions"><div class="action-buttons"><button class="action-btn btn-fold" data-action="fold">Fold</button>';
-        if (toCall===0) html += '<button class="action-btn btn-check" data-action="check">Check</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':(gs.currentBet>0?'Raise':'Bet'))+'</button>';
-        else html += '<button class="action-btn btn-call" data-action="call">Call $'+fmt(Math.min(toCall,myPlayer.chips))+'</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':'Raise')+'</button>';
-        html += '</div>';
-        if (state.showRaise) html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt||minRaise)+'</span></div><div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+(state.raiseAmt||minRaise)+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½ Pot</button><button class="preset-btn" data-preset="0.75">¾ Pot</button><button class="preset-btn" data-preset="1">Pot</button><button class="action-btn btn-raise" data-action="raise" style="padding:.5rem 1rem">'+(gs.currentBet>0?'Raise':'Bet')+'</button></div>';
-        html += '</div>';
+        // Initialize raiseAmt if not set
+        if (!state.raiseAmt || state.raiseAmt < minRaise) state.raiseAmt = minRaise;
+        html += '<div class="actions">';
+        // Raise/bet slider always visible
+        html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt)+'</span></div>';
+        html += '<div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+state.raiseAmt+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½</button><button class="preset-btn" data-preset="0.75">¾</button><button class="preset-btn" data-preset="1">Pot</button></div>';
+        // Action buttons
+        html += '<div class="action-buttons" style="margin-top:.5rem"><button class="action-btn btn-fold" data-action="fold">Fold</button>';
+        if (toCall===0) html += '<button class="action-btn btn-check" data-action="check">Check</button>';
+        else html += '<button class="action-btn btn-call" data-action="call">Call $'+fmt(Math.min(toCall,myPlayer.chips))+'</button>';
+        html += '<button class="action-btn btn-raise" data-action="raise">'+(gs.currentBet>0?'Raise':'Bet')+'</button>';
+        html += '</div></div>';
       }
       if (state.winner) html += '<div class="winner-overlay"><div class="winner-box"><div class="winner-title">'+state.winner.names.join(', ')+' Wins!</div>'+(state.winner.cards?'<div class="winner-hand" style="color:#c084fc;font-family:monospace">'+state.winner.cards+'</div>':'')+'<div class="winner-hand">'+state.winner.hand+'</div><div class="winner-amount">+$'+fmt(state.winner.amount)+'</div></div></div>';
       html += '</div>';
@@ -498,8 +504,7 @@
       const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; state.lastBoardLength=0; chatInputValue=''; socket.emit('getTables'); render(); };
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
       const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
-      document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); state.showRaise=false; } else { socket.emit('action',{action}); } playSound(action); }; });
-      const raiseToggle = document.getElementById('raiseToggle'); if (raiseToggle) raiseToggle.onclick = () => { state.showRaise=!state.showRaise; if(state.showRaise){const gs=state.gameState;state.raiseAmt=gs.currentBet+gs.bb;} playSound('click'); render(); };
+      document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); } else { socket.emit('action',{action}); } playSound(action); }; });
       const raiseSlider = document.getElementById('raiseSlider'); if (raiseSlider) raiseSlider.oninput = e => { state.raiseAmt=parseInt(e.target.value); render(); };
       const raiseMinus = document.getElementById('raiseMinus'); if (raiseMinus) raiseMinus.onclick = () => { const gs=state.gameState; state.raiseAmt=Math.max(gs.currentBet+gs.bb,(state.raiseAmt||gs.currentBet+gs.bb)-gs.bb); playSound('click'); render(); };
       const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
