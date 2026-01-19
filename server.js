@@ -126,7 +126,7 @@ function generateTableCode() {
   return code;
 }
 
-function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = false) {
+function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = false, twoSevenGame = false, twoSevenBounty = 5) {
   const code = generateTableCode();
   const table = {
     code,
@@ -137,6 +137,8 @@ function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = fals
     bb: blinds[1],
     defaultBuyIn: buyIn,
     isPrivate,
+    twoSevenGame,
+    twoSevenBounty,
     players: [],
     seats: Array(maxSeats).fill(null),
     gameState: null,
@@ -159,7 +161,9 @@ function getTableList() {
       blinds: `$${table.sb}/$${table.bb}`,
       buyIn: table.defaultBuyIn,
       inProgress: table.handInProgress,
-      isPrivate: table.isPrivate
+      isPrivate: table.isPrivate,
+      twoSevenGame: table.twoSevenGame,
+      twoSevenBounty: table.twoSevenBounty
     });
   });
   return list;
@@ -372,6 +376,15 @@ function advancePhase(table) {
   
   gs.currentIdx = idx;
   return 'continue';
+}
+
+// Check if hand is 2-7 offsuit (the worst hand)
+function isTwoSevenOffsuit(cards) {
+  if (!cards || cards.length !== 2) return false;
+  const ranks = cards.map(c => c.rank).sort();
+  const suits = cards.map(c => c.suit);
+  // Must be 2 and 7, different suits
+  return ranks[0] === '2' && ranks[1] === '7' && suits[0] !== suits[1];
 }
 
 function showdown(table) {
@@ -624,6 +637,8 @@ function getPublicGameState(table, forPlayerId = null) {
     maxSeats: table.maxSeats,
     handInProgress: table.handInProgress,
     isPrivate: table.isPrivate,
+    twoSevenGame: table.twoSevenGame,
+    twoSevenBounty: table.twoSevenBounty,
     code: table.code
   };
 }
@@ -670,8 +685,8 @@ io.on('connection', (socket) => {
     socket.emit('tableList', getTableList());
   });
   
-  socket.on('createTable', ({ name, maxSeats, blinds, buyIn, isPrivate }) => {
-    const table = createTable(socket.id, name, maxSeats, blinds, buyIn, isPrivate || false);
+  socket.on('createTable', ({ name, maxSeats, blinds, buyIn, isPrivate, twoSevenGame, twoSevenBounty }) => {
+    const table = createTable(socket.id, name, maxSeats, blinds, buyIn, isPrivate || false, twoSevenGame || false, twoSevenBounty || 5);
     
     const player = {
       id: socket.id,
@@ -1050,6 +1065,34 @@ io.on('connection', (socket) => {
       const winners = result.winners || [{ player: result.winner, amount: result.amount }];
       
       io.to(table.code).emit('collectBets');
+      
+      // Check for 2-7 game bounty
+      if (table.twoSevenGame && winners.length === 1) {
+        const winner = winners[0].player;
+        const winnerIdx = gs.players.indexOf(winner);
+        if (winner.cards && isTwoSevenOffsuit(winner.cards)) {
+          // Winner had 2-7 offsuit! Collect bounty from all other players
+          const bountyPerPlayer = table.twoSevenBounty * table.bb;
+          let totalBounty = 0;
+          
+          gs.players.forEach((p, i) => {
+            if (p && i !== winnerIdx && p.chips > 0) {
+              const payment = Math.min(bountyPerPlayer, p.chips);
+              p.chips -= payment;
+              totalBounty += payment;
+            }
+          });
+          
+          winner.chips += totalBounty;
+          
+          // Notify about 2-7 bounty win
+          io.to(table.code).emit('twoSevenWin', {
+            name: winner.name,
+            bountyPerPlayer: bountyPerPlayer,
+            totalBounty: totalBounty
+          });
+        }
+      }
       
       // Build winner info with cards for action log
       // Only include cards if it was NOT a "everyone folded" situation
