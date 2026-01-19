@@ -372,6 +372,12 @@
       html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('')+'</div><div class="chat-input"><input type="text" id="chatInput" placeholder="Type a message..."></div></div>';
       html += '<div class="action-log"><div class="log-header">📋 Action Log</div><div class="log-messages">'+state.actionLog.map(m=>'<div class="log-msg '+m.type+'">'+m.text+'</div>').join('')+'</div></div>';
       if (state.sittingOut) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
+      
+      // Show "Show Cards" button at showdown if player can show
+      if (gs.phase === 'showdown' && myPlayer && myPlayer.canShow) {
+        html += '<button class="sit-in-btn" id="showCardsBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">Show Cards</button>';
+      }
+      
       if (isMyTurn && !state.sittingOut) {
         html += '<div class="actions"><div class="action-buttons"><button class="action-btn btn-fold" data-action="fold">Fold</button>';
         if (toCall===0) html += '<button class="action-btn btn-check" data-action="check">Check</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':(gs.currentBet>0?'Raise':'Bet'))+'</button>';
@@ -459,6 +465,7 @@
       const startBtn = document.getElementById('startBtn'); if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
       const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; socket.emit('getTables'); render(); };
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
+      const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
       document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); state.showRaise=false; } else { socket.emit('action',{action}); } playSound(action); }; });
       const raiseToggle = document.getElementById('raiseToggle'); if (raiseToggle) raiseToggle.onclick = () => { state.showRaise=!state.showRaise; if(state.showRaise){const gs=state.gameState;state.raiseAmt=gs.currentBet+gs.bb;} playSound('click'); render(); };
       const raiseSlider = document.getElementById('raiseSlider'); if (raiseSlider) raiseSlider.oninput = e => { state.raiseAmt=parseInt(e.target.value); render(); };
@@ -475,6 +482,7 @@
     socket.on('playerJoined', ({name,seatIdx}) => { state.actionLog.push({text:name+' joined',type:'system'}); playSound('click'); render(); });
     socket.on('playerLeft', ({name,seatIdx}) => { state.actionLog.push({text:name+' left',type:'system'}); render(); });
     socket.on('playerSatIn', ({name,seatIdx}) => { state.actionLog.push({text:name+' is now active',type:'system'}); render(); });
+    socket.on('playerShowedCards', ({name,seatIdx}) => { state.actionLog.push({text:name+' shows their cards',type:'system'}); render(); });
     socket.on('handStarted', ({handNum}) => { state.screen='game'; state.winner=null; state.actionLog.push({text:'--- Hand #'+handNum+' ---',type:'system'}); playSound('deal'); render(); });
     socket.on('gameUpdate', gameState => { state.gameState=gameState; state.screen='game'; render(); });
     socket.on('actionMade', ({seatIdx,name,action,amount}) => { let text='',type=action; if(action==='fold')text=name+' folds'; else if(action==='check')text=name+' checks'; else if(action==='call')text=name+' calls'; else if(action==='raise')text=name+' raises to $'+fmt(amount); else if(action==='allin')text=name+' ALL IN'; state.actionLog.push({text,type}); render(); });
