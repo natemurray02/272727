@@ -35,6 +35,9 @@
     .table-info{flex:1}
     .table-name{font-weight:600;color:#fff;font-size:.9rem;display:flex;align-items:center;gap:.4rem}
     .private-badge{color:#a78bfa;font-size:.7rem}
+    .twoseven-badge{color:#22d3ee;font-size:.65rem;background:rgba(34,211,238,.15);padding:2px 6px;border-radius:4px;margin-left:4px}
+    .twoseven-toggle{border:1px solid rgba(34,211,238,.3);background:rgba(34,211,238,.05)}
+    .twoseven-toggle .toggle-switch.on{background:linear-gradient(135deg,#22d3ee,#0891b2)}
     .table-details{font-size:.7rem;color:#a1a1aa;margin-top:.2rem}
     .table-seats{display:flex;align-items:center;gap:.3rem;margin-right:1rem}
     .seat-dot{width:8px;height:8px;border-radius:50%;background:#3f3f46}
@@ -58,6 +61,8 @@
     .header-info{font-size:.75rem;color:#a1a1aa}
     .header-info span{color:#fbbf24}
     .header-info .private-indicator{color:#a78bfa}
+    .header-info .twoseven-indicator{color:#22d3ee;font-weight:600}
+    .header-info .twoseven-off{color:#52525b;font-size:.7rem}
     .leave-btn{padding:.4rem .8rem;border-radius:.4rem;border:none;background:#dc2626;color:#fff;font-size:.75rem;cursor:pointer}
     .leave-seat-btn{padding:.4rem .8rem;border-radius:.4rem;border:1px solid #fbbf24;background:transparent;color:#fbbf24;font-size:.75rem;cursor:pointer;margin-right:.5rem}
     .leave-seat-btn:hover{background:rgba(251,191,36,.1)}
@@ -301,7 +306,9 @@
       hasCodeFromUrl: !!urlTableCode,
       lastBoardLength: 0,
       isSpectator: false,
-      revealedCards: [false, false]  // Track which of my cards are revealed
+      revealedCards: [false, false],
+      twoSevenGame: false,
+      twoSevenBounty: 5  // Default 5 BB per player
     };
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
@@ -378,7 +385,7 @@
         return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="card-panel" style="max-width:400px"><div class="panel-title"><span>🔒</span> Join Private Table</div><p style="color:#a1a1aa;margin-bottom:1rem;font-size:.9rem">You\'ve been invited to table <span style="color:#a78bfa;font-weight:bold">'+state.tableCode+'</span></p><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinPrivateBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">JOIN PRIVATE TABLE</button><button class="btn" id="backToLobbyBtn" style="margin-top:.5rem;background:transparent;border:1px solid #3f3f46;color:#a1a1aa">Back to Lobby</button></div></div>';
       }
       
-      return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="lobby-container"><div class="card-panel"><div class="panel-title"><span>🎮</span> Active Tables <button class="refresh-btn" id="refreshBtn">🔄</button></div><div class="tables-list">'+(state.tables.length===0?'<div class="no-tables">No active tables. Create one!</div>':state.tables.map(t=>'<div class="table-row '+(t.isPrivate?'private':'')+'"><div class="table-info"><div class="table-name">'+(t.isPrivate?'<span class="private-badge">🔒</span>':'')+t.hostName+'\'s Table</div><div class="table-details">'+t.blinds+' blinds • $'+fmt(t.buyIn)+' buy-in'+(t.inProgress?' • In Progress':'')+'</div></div><div class="table-seats">'+Array(t.maxSeats).fill(0).map((_,i)=>'<div class="seat-dot '+(i<t.playerCount?'filled':'')+'"></div>').join('')+'</div>'+(t.isPrivate?'<button class="join-btn private-join" disabled title="Need invite link">Private</button>':'<button class="join-btn" data-code="'+t.code+'" '+(t.playerCount>=t.maxSeats?'disabled':'')+'>'+(t.playerCount>=t.maxSeats?'Full':'Join')+'</button>')+'</div>').join(''))+'</div></div><div class="card-panel"><div class="tabs"><button class="tab '+(state.tab==='create'?'active':'')+'" data-tab="create">Create Table</button><button class="tab '+(state.tab==='join'?'active':'')+'" data-tab="join">Join by Code</button></div><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'">'+(state.tab==='create'?'<div class="toggle-container"><span class="toggle-label '+(state.isPrivate?'':'active')+'">🌐 Public</span><div class="toggle-switch '+(state.isPrivate?'on':'')+'" id="privateToggle"><div class="toggle-knob"></div></div><span class="toggle-label '+(state.isPrivate?'active':'')+'">🔒 Private</span></div>'+(state.isPrivate?'<div class="private-info">Private tables require an invite link to join</div>':'')+'<label>Table Size</label><select id="maxSeats">'+[2,3,4,5,6,7,8,9].map(n=>'<option value="'+n+'" '+(state.maxSeats===n?'selected':'')+'>'+n+' Seats</option>').join('')+'</select><label>Blinds</label><select id="blinds">'+BLINDS.map((b,i)=>'<option value="'+i+'" '+(state.blindsIdx===i?'selected':'')+'>$'+b[0]+' / $'+b[1]+'</option>').join('')+'</select><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="'+(bb*20)+'" max="'+(bb*200)+'" step="'+(bb*10)+'" value="'+state.buyIn+'"><button class="btn btn-primary" id="createBtn" style="'+(state.isPrivate?'background:linear-gradient(135deg,#8b5cf6,#7c3aed)':'')+'">CREATE '+(state.isPrivate?'PRIVATE ':'')+'TABLE</button>':'<label>Table Code</label><input type="text" id="tableCode" placeholder="Enter 6-digit code..." value="'+state.tableCode+'" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:1.3rem"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinBtn">JOIN TABLE</button>')+'</div></div><p class="footer">AllIn27.com</p></div>';
+      return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="lobby-container"><div class="card-panel"><div class="panel-title"><span>🎮</span> Active Tables <button class="refresh-btn" id="refreshBtn">🔄</button></div><div class="tables-list">'+(state.tables.length===0?'<div class="no-tables">No active tables. Create one!</div>':state.tables.map(t=>'<div class="table-row '+(t.isPrivate?'private':'')+'"><div class="table-info"><div class="table-name">'+(t.isPrivate?'<span class="private-badge">🔒</span>':'')+t.hostName+'\'s Table'+(t.twoSevenGame?' <span class="twoseven-badge">2-7: '+t.twoSevenBounty+'BB</span>':'')+'</div><div class="table-details">'+t.blinds+' blinds • $'+fmt(t.buyIn)+' buy-in'+(t.inProgress?' • In Progress':'')+'</div></div><div class="table-seats">'+Array(t.maxSeats).fill(0).map((_,i)=>'<div class="seat-dot '+(i<t.playerCount?'filled':'')+'"></div>').join('')+'</div>'+(t.isPrivate?'<button class="join-btn private-join" disabled title="Need invite link">Private</button>':'<button class="join-btn" data-code="'+t.code+'" '+(t.playerCount>=t.maxSeats?'disabled':'')+'>'+(t.playerCount>=t.maxSeats?'Full':'Join')+'</button>')+'</div>').join(''))+'</div></div><div class="card-panel"><div class="tabs"><button class="tab '+(state.tab==='create'?'active':'')+'" data-tab="create">Create Table</button><button class="tab '+(state.tab==='join'?'active':'')+'" data-tab="join">Join by Code</button></div><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'">'+(state.tab==='create'?'<div class="toggle-container"><span class="toggle-label '+(state.isPrivate?'':'active')+'">🌐 Public</span><div class="toggle-switch '+(state.isPrivate?'on':'')+'" id="privateToggle"><div class="toggle-knob"></div></div><span class="toggle-label '+(state.isPrivate?'active':'')+'">🔒 Private</span></div>'+(state.isPrivate?'<div class="private-info">Private tables require an invite link to join</div>':'')+'<label>Table Size</label><select id="maxSeats">'+[2,3,4,5,6,7,8,9].map(n=>'<option value="'+n+'" '+(state.maxSeats===n?'selected':'')+'>'+n+' Seats</option>').join('')+'</select><label>Blinds</label><select id="blinds">'+BLINDS.map((b,i)=>'<option value="'+i+'" '+(state.blindsIdx===i?'selected':'')+'>$'+b[0]+' / $'+b[1]+'</option>').join('')+'</select><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="'+(bb*20)+'" max="'+(bb*200)+'" step="'+(bb*10)+'" value="'+state.buyIn+'"><div class="toggle-container twoseven-toggle"><span class="toggle-label '+(state.twoSevenGame?'':'active')+'">No 2-7</span><div class="toggle-switch '+(state.twoSevenGame?'on':'')+'" id="twoSevenToggle"><div class="toggle-knob"></div></div><span class="toggle-label '+(state.twoSevenGame?'active':'')+'">2-7 Game</span></div>'+(state.twoSevenGame?'<label>2-7 Bounty: '+state.twoSevenBounty+' BB per player</label><input type="range" id="twoSevenBounty" min="1" max="10" step="1" value="'+state.twoSevenBounty+'">':'')+'<button class="btn btn-primary" id="createBtn" style="'+(state.isPrivate?'background:linear-gradient(135deg,#8b5cf6,#7c3aed)':'')+'">CREATE '+(state.isPrivate?'PRIVATE ':'')+'TABLE</button>':'<label>Table Code</label><input type="text" id="tableCode" placeholder="Enter 6-digit code..." value="'+state.tableCode+'" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:1.3rem"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinBtn">JOIN TABLE</button>')+'</div></div><p class="footer">AllIn27.com</p></div>';
     }
     
     function renderWaiting() {
@@ -393,7 +400,8 @@
       const positions = SEAT_POSITIONS[gs.maxSeats] || SEAT_POSITIONS[6];
       const potChips = Math.min(10, Math.max(2, Math.ceil(gs.pot / gs.bb / 2)));
       const isPrivateTable = gs.isPrivate;
-      let html = '<div class="header"><span class="header-logo">♠ AllIn27</span><span class="header-info">'+(isPrivateTable?'<span class="private-indicator">🔒 Private</span> | ':'')+'Code: <span>'+state.tableCode+'</span> | Blinds: <span>$'+gs.sb+'/$'+gs.bb+'</span> | Hand <span>#'+(gs.handNum||0)+'</span></span><div class="header-buttons">'+(state.isSpectator?'<button class="lobby-btn" id="lobbyBtn">← Lobby</button>':'<button class="leave-seat-btn" id="leaveSeatBtn">Leave Seat</button>')+'<button class="leave-btn" id="leaveBtn">Leave Table</button></div></div><div class="table-area"><div class="felt"><div class="felt-brand">ALLIN27</div></div>';
+      const twoSevenInfo = gs.twoSevenGame ? '<span class="twoseven-indicator">2-7: '+gs.twoSevenBounty+'BB</span> | ' : '<span class="twoseven-off">2-7 off</span> | ';
+      let html = '<div class="header"><span class="header-logo">♠ AllIn27</span><span class="header-info">'+(isPrivateTable?'<span class="private-indicator">🔒 Private</span> | ':'')+twoSevenInfo+'Code: <span>'+state.tableCode+'</span> | Blinds: <span>$'+gs.sb+'/$'+gs.bb+'</span> | Hand <span>#'+(gs.handNum||0)+'</span></span><div class="header-buttons">'+(state.isSpectator?'<button class="lobby-btn" id="lobbyBtn">← Lobby</button>':'<button class="leave-seat-btn" id="leaveSeatBtn">Leave Seat</button>')+'<button class="leave-btn" id="leaveBtn">Leave Table</button></div></div><div class="table-area"><div class="felt"><div class="felt-brand">ALLIN27</div></div>';
       if (gs.pot > 0) html += '<div class="pot-area"><div style="display:flex;gap:3px"><div class="chip-stack">'+Array(Math.ceil(potChips/3)).fill('<div class="chip chip-red"></div>').join('')+'</div><div class="chip-stack">'+Array(Math.ceil(potChips/4)).fill('<div class="chip chip-black"></div>').join('')+'</div><div class="chip-stack">'+Array(Math.ceil(potChips/2)).fill('<div class="chip chip-gold"></div>').join('')+'</div></div><div class="pot-amount">$'+fmt(gs.pot)+'</div></div>';
       html += '<div class="community-cards">'+[0,1,2,3,4].map(i=>gs.community[i]?renderCard(gs.community[i]):'<div class="card empty"></div>').join('')+'</div>';
       html += '<div class="deck">'+[0,1,2,3,4,5].map(i=>'<div class="deck-card" style="top:'+(-i)+'px;left:'+(-i*0.5)+'px"><div class="deck-card-inner">♦</div></div>').join('')+'</div>';
@@ -551,6 +559,14 @@
       const privateToggle = document.getElementById('privateToggle');
       if (privateToggle) privateToggle.onclick = () => { state.isPrivate = !state.isPrivate; playSound('click'); render(); };
       
+      // 2-7 game toggle
+      const twoSevenToggle = document.getElementById('twoSevenToggle');
+      if (twoSevenToggle) twoSevenToggle.onclick = () => { state.twoSevenGame = !state.twoSevenGame; playSound('click'); render(); };
+      
+      // 2-7 bounty slider
+      const twoSevenBountySlider = document.getElementById('twoSevenBounty');
+      if (twoSevenBountySlider) twoSevenBountySlider.oninput = e => { state.twoSevenBounty = parseInt(e.target.value); render(); };
+      
       // Create table
       const createBtn = document.getElementById('createBtn'); 
       if (createBtn) createBtn.onclick = () => { 
@@ -560,7 +576,9 @@
           maxSeats: state.maxSeats, 
           blinds: BLINDS[state.blindsIdx], 
           buyIn: state.buyIn,
-          isPrivate: state.isPrivate
+          isPrivate: state.isPrivate,
+          twoSevenGame: state.twoSevenGame,
+          twoSevenBounty: state.twoSevenBounty
         }); 
         localStorage.setItem('pokerName', state.name); 
         playSound('click'); 
@@ -672,6 +690,12 @@
     socket.on('cardRevealed', ({name,seatIdx,cardIdx,card}) => { 
       state.actionLog.push({text: name + ' reveals: ' + card, type:'cards'}); 
       render(); 
+    });
+    
+    socket.on('twoSevenWin', ({name,bountyPerPlayer,totalBounty}) => {
+      state.actionLog.push({text: '🎉 ' + name + ' wins 2-7 bounty! +$' + fmt(totalBounty), type:'win'});
+      playSound('win');
+      render();
     });
     
     // Player showed their cards voluntarily
