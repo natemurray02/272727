@@ -59,6 +59,11 @@
     .header-info span{color:#fbbf24}
     .header-info .private-indicator{color:#a78bfa}
     .leave-btn{padding:.4rem .8rem;border-radius:.4rem;border:none;background:#dc2626;color:#fff;font-size:.75rem;cursor:pointer}
+    .leave-seat-btn{padding:.4rem .8rem;border-radius:.4rem;border:1px solid #fbbf24;background:transparent;color:#fbbf24;font-size:.75rem;cursor:pointer;margin-right:.5rem}
+    .leave-seat-btn:hover{background:rgba(251,191,36,.1)}
+    .lobby-btn{padding:.4rem .8rem;border-radius:.4rem;border:1px solid #a1a1aa;background:transparent;color:#a1a1aa;font-size:.75rem;cursor:pointer;margin-right:.5rem}
+    .lobby-btn:hover{background:rgba(255,255,255,.1)}
+    .header-buttons{display:flex;align-items:center}
     .share-link-box{display:flex;gap:.5rem;margin-top:.5rem}
     .share-link-input{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(139,92,246,.3);border-radius:.4rem;padding:.4rem .6rem;color:#a78bfa;font-size:.7rem;font-family:monospace}
     .copy-btn{padding:.4rem .8rem;border-radius:.4rem;border:none;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:.7rem;cursor:pointer;font-weight:600}
@@ -97,6 +102,8 @@
     .badge-bb{bottom:-6px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#f59e0b,#d97706)}
     .badge-allin{top:-4px;right:-4px;background:linear-gradient(135deg,#ef4444,#dc2626);font-size:.3rem}
     .empty-seat{border:2px dashed rgba(251,191,36,.2);background:rgba(0,0,0,.2);padding:1rem .5rem;border-radius:10px;color:#52525b;font-size:.65rem}
+    .empty-seat.clickable-seat{cursor:pointer;transition:all .2s}
+    .empty-seat.clickable-seat:hover{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.1);color:#fbbf24}
     .deck{position:absolute;top:50%;left:80%;transform:translate(-50%,-50%);z-index:5}
     .deck-card{position:absolute;width:34px;height:48px;background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;border-radius:4px;display:flex;align-items:center;justify-content:center}
     .deck-card-inner{width:26px;height:40px;border:1px solid rgba(255,255,255,.3);border-radius:2px;background:repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.1) 2px,rgba(255,255,255,.1) 4px);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:.7rem}
@@ -283,7 +290,8 @@
       sittingOut:false,
       isPrivate: false,
       hasCodeFromUrl: !!urlTableCode,
-      lastBoardLength: 0  // Track community cards for action log
+      lastBoardLength: 0,
+      isSpectator: false
     };
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
@@ -364,14 +372,18 @@
       const positions = SEAT_POSITIONS[gs.maxSeats] || SEAT_POSITIONS[6];
       const potChips = Math.min(10, Math.max(2, Math.ceil(gs.pot / gs.bb / 2)));
       const isPrivateTable = gs.isPrivate;
-      let html = '<div class="header"><span class="header-logo">♠ AllIn27</span><span class="header-info">'+(isPrivateTable?'<span class="private-indicator">🔒 Private</span> | ':'')+'Code: <span>'+state.tableCode+'</span> | Blinds: <span>$'+gs.sb+'/$'+gs.bb+'</span> | Hand <span>#'+(gs.handNum||0)+'</span></span><button class="leave-btn" id="leaveBtn">Leave</button></div><div class="table-area"><div class="felt"><div class="felt-brand">ALLIN27</div></div>';
+      let html = '<div class="header"><span class="header-logo">♠ AllIn27</span><span class="header-info">'+(isPrivateTable?'<span class="private-indicator">🔒 Private</span> | ':'')+'Code: <span>'+state.tableCode+'</span> | Blinds: <span>$'+gs.sb+'/$'+gs.bb+'</span> | Hand <span>#'+(gs.handNum||0)+'</span></span><div class="header-buttons">'+(state.isSpectator?'<button class="lobby-btn" id="lobbyBtn">← Lobby</button>':'<button class="leave-seat-btn" id="leaveSeatBtn">Leave Seat</button>')+'<button class="leave-btn" id="leaveBtn">Leave Table</button></div></div><div class="table-area"><div class="felt"><div class="felt-brand">ALLIN27</div></div>';
       if (gs.pot > 0) html += '<div class="pot-area"><div style="display:flex;gap:3px"><div class="chip-stack">'+Array(Math.ceil(potChips/3)).fill('<div class="chip chip-red"></div>').join('')+'</div><div class="chip-stack">'+Array(Math.ceil(potChips/4)).fill('<div class="chip chip-black"></div>').join('')+'</div><div class="chip-stack">'+Array(Math.ceil(potChips/2)).fill('<div class="chip chip-gold"></div>').join('')+'</div></div><div class="pot-amount">$'+fmt(gs.pot)+'</div></div>';
       html += '<div class="community-cards">'+[0,1,2,3,4].map(i=>gs.community[i]?renderCard(gs.community[i]):'<div class="card empty"></div>').join('')+'</div>';
       html += '<div class="deck">'+[0,1,2,3,4,5].map(i=>'<div class="deck-card" style="top:'+(-i)+'px;left:'+(-i*0.5)+'px"><div class="deck-card-inner">♦</div></div>').join('')+'</div>';
       gs.players.forEach((p,i) => {
         const pos = positions[i];
         if (!pos) return;
-        if (!p) { html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat">Empty</div></div>'; return; }
+        if (!p) { 
+          // Empty seat - clickable to sit
+          html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat clickable-seat" data-seat="'+i+'">Click to Sit</div></div>'; 
+          return; 
+        }
         const isActive = gs.currentIdx === i && gs.handInProgress;
         const isMe = p.isMe;
         // Show cards if it's me, OR if at showdown and cards have suit (means server sent them)
@@ -502,7 +514,17 @@
       };
       
       const startBtn = document.getElementById('startBtn'); if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
-      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; state.lastBoardLength=0; chatInputValue=''; socket.emit('getTables'); render(); };
+      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; state.lastBoardLength=0; state.isSpectator=false; chatInputValue=''; socket.emit('getTables'); render(); };
+      const leaveSeatBtn = document.getElementById('leaveSeatBtn'); if (leaveSeatBtn) leaveSeatBtn.onclick = () => { socket.emit('leaveSeat'); state.isSpectator=true; state.seatIdx=-1; playSound('click'); };
+      const lobbyBtn = document.getElementById('lobbyBtn'); if (lobbyBtn) lobbyBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; state.lastBoardLength=0; state.isSpectator=false; chatInputValue=''; socket.emit('getTables'); render(); };
+      // Clickable seats
+      document.querySelectorAll('.clickable-seat').forEach(seat => {
+        seat.onclick = () => {
+          const seatIdx = parseInt(seat.dataset.seat);
+          socket.emit('takeSeat', { seatIdx, buyIn: state.buyIn, name: state.name });
+          playSound('click');
+        };
+      });
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
       const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
       document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); } else { socket.emit('action',{action}); } playSound(action); }; });
@@ -557,12 +579,14 @@
     }
     
     socket.on('tableList', tables => { state.tables=tables; if(state.screen==='lobby')render(); });
-    socket.on('tableCreated', ({code,seatIdx,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.isHost=true; state.screen='waiting'; state.sittingOut=false; if(state.gameState) state.gameState.isPrivate=isPrivate; render(); });
-    socket.on('joinedTable', ({code,seatIdx,sittingOut,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.sittingOut=sittingOut; state.screen='waiting'; state.hasCodeFromUrl=false; if(state.gameState) state.gameState.isPrivate=isPrivate; render(); });
+    socket.on('tableCreated', ({code,seatIdx,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.isHost=true; state.sittingOut=false; if(state.gameState) state.gameState.isPrivate=isPrivate; state.screen = isPrivate ? 'waiting' : 'game'; render(); });
+    socket.on('joinedTable', ({code,seatIdx,sittingOut,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.sittingOut=sittingOut; state.screen='game'; state.hasCodeFromUrl=false; if(state.gameState) state.gameState.isPrivate=isPrivate; render(); });
     socket.on('tableUpdate', ({seats,gameState,phase,isPrivate,code}) => { state.seats=seats; state.phase=phase; if(gameState){state.gameState=gameState;state.maxSeats=gameState.maxSeats;checkBoardCards(gameState);} if(isPrivate!==undefined && state.gameState) state.gameState.isPrivate=isPrivate; if(code) state.tableCode=code; render(); });
     socket.on('playerJoined', ({name,seatIdx}) => { state.actionLog.push({text:name+' joined',type:'system'}); playSound('click'); render(); });
     socket.on('playerLeft', ({name,seatIdx}) => { state.actionLog.push({text:name+' left',type:'system'}); render(); });
     socket.on('playerSatIn', ({name,seatIdx}) => { state.actionLog.push({text:name+' is now active',type:'system'}); render(); });
+    socket.on('seatTaken', ({seatIdx}) => { state.seatIdx=seatIdx; state.isSpectator=false; state.sittingOut=false; render(); });
+    socket.on('leftSeat', () => { state.seatIdx=-1; state.isSpectator=true; render(); });
     
     // Player showed their cards voluntarily
     socket.on('playerShowedCards', ({name,seatIdx,cards}) => { 
