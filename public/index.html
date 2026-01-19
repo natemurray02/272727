@@ -150,6 +150,7 @@
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     .hidden{display:none!important}
     .auth-header{position:fixed;top:0;right:0;display:flex;align-items:center;padding:.75rem 1rem;z-index:200}
+    .auth-header.in-game{display:none}
     .auth-btn{padding:.5rem 1rem;border-radius:.5rem;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s;margin-left:.5rem}
     .auth-btn-login{background:transparent;border:1px solid rgba(251,191,36,.5);color:#fbbf24}
     .auth-btn-login:hover{background:rgba(251,191,36,.1)}
@@ -333,6 +334,17 @@
     
     function render() {
       const app = document.getElementById('app');
+      const authHeader = document.getElementById('authHeader');
+      
+      // Hide auth header when in game
+      if (authHeader) {
+        if (state.screen === 'game' || state.screen === 'waiting') {
+          authHeader.classList.add('in-game');
+        } else {
+          authHeader.classList.remove('in-game');
+        }
+      }
+      
       if (state.screen === 'lobby') app.innerHTML = renderLobby();
       else if (state.screen === 'waiting') app.innerHTML = renderWaiting();
       else if (state.screen === 'game') app.innerHTML = renderGame();
