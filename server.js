@@ -26,6 +26,18 @@ const shuffle = (arr) => {
   return a;
 };
 
+// Card formatting for action log
+function formatCard(card) {
+  if (!card || !card.rank || !card.suit) return '??';
+  const suitSymbols = { h: '♥', d: '♦', c: '♣', s: '♠' };
+  return `${card.rank}${suitSymbols[card.suit] || card.suit}`;
+}
+
+function formatCards(cards) {
+  if (!cards || cards.length === 0) return '';
+  return cards.map(formatCard).join(' ');
+}
+
 // Hand evaluation
 const rankValue = r => RANKS.indexOf(r);
 
@@ -599,6 +611,32 @@ function broadcastTableList() {
   io.emit('tableList', getTableList());
 }
 
+// Helper function to try starting the game automatically
+function tryAutoStartGame(table) {
+  // Only auto-start if game is in waiting phase
+  if (table.phase !== 'waiting') return false;
+  
+  // Count active players (not sitting out, has chips)
+  const activePlayers = table.seats.filter(s => s !== null && !s.sittingOut && s.chips > 0).length;
+  
+  if (activePlayers >= 2) {
+    table.phase = 'playing';
+    
+    if (startHand(table)) {
+      table.seats.forEach((p, i) => {
+        if (p) {
+          io.to(p.socketId).emit('gameUpdate', getPublicGameState(table, p.id));
+        }
+      });
+      io.to(table.code).emit('handStarted', { handNum: table.gameState.handNum });
+      io.to(table.code).emit('sound', { type: 'deal' });
+      broadcastTableList();
+      return true;
+    }
+  }
+  return false;
+}
+
 // Socket.io handling
 io.on('connection', (socket) => {
   console.log('Connected:', socket.id);
@@ -692,7 +730,7 @@ io.on('connection', (socket) => {
       cards: [],
       folded: false,
       allIn: false,
-      sittingOut: table.handInProgress,
+      sittingOut: table.handInProgress, // Only sit out if hand already in progress
       socketId: socket.id
     };
     
@@ -725,6 +763,9 @@ io.on('connection', (socket) => {
     
     io.to(code).emit('playerJoined', { name, seatIdx });
     broadcastTableList();
+    
+    // AUTO-START: Try to start the game when a new player joins
+    tryAutoStartGame(table);
   });
   
   socket.on('sitIn', () => {
@@ -747,6 +788,9 @@ io.on('connection', (socket) => {
           });
         }
       });
+      
+      // AUTO-START: Try to start the game when a player sits in
+      tryAutoStartGame(table);
     }
   });
   
@@ -764,7 +808,12 @@ io.on('connection', (socket) => {
         }
       });
       
-      io.to(table.code).emit('playerShowedCards', { name: player.name, seatIdx: socket.seatIdx });
+      // Include the cards in the action log when player shows
+      io.to(table.code).emit('playerShowedCards', { 
+        name: player.name, 
+        seatIdx: socket.seatIdx,
+        cards: formatCards(player.cards)
+      });
     }
   });
   
@@ -827,15 +876,26 @@ io.on('connection', (socket) => {
     }
     
     if (result.winners || result.winner) {
+      const gs = table.gameState;
       const winners = result.winners || [{ player: result.winner, amount: result.amount }];
       
       io.to(table.code).emit('collectBets');
-      io.to(table.code).emit('handComplete', {
-        winners: winners.map(w => ({
+      
+      // Build winner info with cards for action log (only if cards were shown)
+      const winnersWithCards = winners.map(w => {
+        const winnerIdx = gs.players.indexOf(w.player);
+        const winnerPlayer = gs.players[winnerIdx];
+        const showCards = winnerPlayer && (winnerPlayer.showCards || winnerPlayer.wentToShowdown) && !result.noShow;
+        return {
           name: w.player.name,
-          seatIdx: table.gameState.players.indexOf(w.player),
-          amount: w.amount
-        })),
+          seatIdx: winnerIdx,
+          amount: w.amount,
+          cards: showCards ? formatCards(winnerPlayer.cards) : null
+        };
+      });
+      
+      io.to(table.code).emit('handComplete', {
+        winners: winnersWithCards,
         hand: result.hand,
         potResults: result.potResults
       });
