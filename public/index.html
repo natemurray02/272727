@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AllIn27 | Texas Hold'em Poker</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♠️</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -121,11 +122,88 @@
     .sit-in-btn{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);padding:.8rem 2rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:bold;cursor:pointer;z-index:60}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     .hidden{display:none!important}
+    .auth-header{position:fixed;top:0;right:0;display:flex;align-items:center;padding:.75rem 1rem;z-index:200}
+.auth-btn{padding:.5rem 1rem;border-radius:.5rem;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s;margin-left:.5rem}
+.auth-btn-login{background:transparent;border:1px solid rgba(251,191,36,.5);color:#fbbf24}
+.auth-btn-login:hover{background:rgba(251,191,36,.1)}
+.auth-btn-signup{background:linear-gradient(135deg,#fbbf24,#d97706);border:none;color:#451a03}
+.auth-btn-signup:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(251,191,36,.3)}
+.user-menu{position:relative}
+.user-display{display:flex;align-items:center;gap:.5rem;padding:.4rem .8rem;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:2rem;cursor:pointer}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:.75rem;color:#451a03}
+.user-name{color:#fbbf24;font-size:.85rem;font-weight:600}
+.user-dropdown{position:absolute;top:100%;right:0;margin-top:.5rem;background:#18181b;border:1px solid rgba(251,191,36,.2);border-radius:.5rem;min-width:150px;opacity:0;visibility:hidden;transform:translateY(-10px);transition:all .2s}
+.user-dropdown.show{opacity:1;visibility:visible;transform:translateY(0)}
+.dropdown-item{padding:.75rem 1rem;color:#e4e4e7;font-size:.85rem;cursor:pointer}
+.dropdown-item:hover{background:rgba(251,191,36,.1)}
+.dropdown-item.logout{color:#ef4444}
   </style>
 </head>
 <body>
-  <div id="app"></div>
+  <div class="auth-header" id="authHeader"></div>
+
+<div class="auth-modal-overlay" id="authModal" style="display:none">
+  <div class="auth-modal" style="background:linear-gradient(145deg,#27272a,#18181b);border:1px solid rgba(251,191,36,.3);border-radius:1rem;padding:2rem;width:100%;max-width:400px;margin:1rem;position:relative">
+    <button onclick="hideAuthModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#71717a;font-size:1.5rem;cursor:pointer">&times;</button>
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <h2 style="font-size:1.5rem;background:linear-gradient(135deg,#fef3c7,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent">♠ ALL IN 27</h2>
+    </div>
+    <div class="auth-tabs" style="display:flex;margin-bottom:1.5rem;gap:.5rem">
+      <button class="tab active" id="loginTab" onclick="showLoginForm()">Log In</button>
+      <button class="tab" id="signupTab" onclick="showSignupForm()">Sign Up</button>
+    </div>
+    <div id="authError" class="hidden" style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.5);color:#fca5a5;padding:.75rem;border-radius:.5rem;margin-bottom:1rem;font-size:.85rem"></div>
+    <div id="authSuccess" class="hidden" style="background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.5);color:#86efac;padding:.75rem;border-radius:.5rem;margin-bottom:1rem;font-size:.85rem"></div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div style="margin-bottom:1rem"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com" required></div>
+      <div style="margin-bottom:1rem"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" required></div>
+      <button type="submit" class="btn btn-primary">Log In</button>
+      <button type="button" onclick="showForgotForm()" style="background:none;border:none;color:#fbbf24;cursor:pointer;font-size:.85rem;margin-top:.75rem;width:100%">Forgot password?</button>
+    </form>
+    <form id="signupForm" class="hidden" onsubmit="handleSignup(event)">
+      <div style="margin-bottom:1rem"><label>Email</label><input type="email" id="signupEmail" placeholder="your@email.com" required></div>
+      <div style="margin-bottom:1rem"><label>Phone Number</label><input type="tel" id="signupPhone" placeholder="+1 234 567 8900"></div>
+      <div style="margin-bottom:1rem"><label>Password</label><input type="password" id="signupPassword" placeholder="••••••••" required></div>
+      <div style="margin-bottom:1rem"><label>Confirm Password</label><input type="password" id="signupConfirm" placeholder="••••••••" required></div>
+      <button type="submit" class="btn btn-primary">Create Account</button>
+    </form>
+    <form id="forgotForm" class="hidden" onsubmit="handleForgot(event)">
+      <div style="margin-bottom:1rem"><label>Email</label><input type="email" id="forgotEmail" placeholder="your@email.com" required></div>
+      <button type="submit" class="btn btn-primary">Reset Password</button>
+      <button type="button" onclick="showLoginForm()" style="background:none;border:none;color:#fbbf24;cursor:pointer;font-size:.85rem;margin-top:.75rem;width:100%">Back to login</button>
+    </form>
+  </div>
+</div><div id="app"></div>
   <script>
+    // Supabase setup
+    const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bWlkd3drd3JvY2l4bXJzZ2l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2ODQ1NzgsImV4cCI6MjA4NDI2MDU3OH0.2MdNumOLrErGknOE4SqLzs1ZIs6HOfp2JZpuz5UIhrs';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let currentUser = null;
+    
+    function renderAuthHeader() {
+      const header = document.getElementById('authHeader');
+      if (currentUser) {
+        const name = currentUser.email.split('@')[0];
+        header.innerHTML = '<div class="user-menu"><div class="user-display" onclick="toggleUserDropdown()"><div class="user-avatar">'+name.charAt(0).toUpperCase()+'</div><span class="user-name">'+name+'</span></div><div class="user-dropdown" id="userDropdown"><div class="dropdown-item">👤 Profile</div><div class="dropdown-item logout" onclick="handleLogout()">🚪 Log Out</div></div></div>';
+      } else {
+        header.innerHTML = '<button class="auth-btn auth-btn-login" onclick="showAuthModal(\'login\')">Log In</button><button class="auth-btn auth-btn-signup" onclick="showAuthModal(\'signup\')">Sign Up</button>';
+      }
+    }
+    function toggleUserDropdown() { document.getElementById('userDropdown').classList.toggle('show'); }
+    function showAuthModal(mode) { document.getElementById('authModal').style.display = 'flex'; if (mode === 'signup') showSignupForm(); else showLoginForm(); }
+    function hideAuthModal() { document.getElementById('authModal').style.display = 'none'; }
+    function showLoginForm() { document.getElementById('loginTab').classList.add('active'); document.getElementById('signupTab').classList.remove('active'); document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('signupForm').classList.add('hidden'); document.getElementById('forgotForm').classList.add('hidden'); document.getElementById('authError').classList.add('hidden'); document.getElementById('authSuccess').classList.add('hidden'); }
+    function showSignupForm() { document.getElementById('signupTab').classList.add('active'); document.getElementById('loginTab').classList.remove('active'); document.getElementById('signupForm').classList.remove('hidden'); document.getElementById('loginForm').classList.add('hidden'); document.getElementById('forgotForm').classList.add('hidden'); document.getElementById('authError').classList.add('hidden'); document.getElementById('authSuccess').classList.add('hidden'); }
+    function showForgotForm() { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('forgotForm').classList.remove('hidden'); }
+    function showAuthError(msg) { const el = document.getElementById('authError'); el.textContent = msg; el.classList.remove('hidden'); }
+    function showAuthSuccess(msg) { const el = document.getElementById('authSuccess'); el.textContent = msg; el.classList.remove('hidden'); }
+    async function handleLogin(e) { e.preventDefault(); const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPassword').value; const { data, error } = await sb.auth.signInWithPassword({ email, password }); if (error) showAuthError(error.message); else { currentUser = data.user; hideAuthModal(); renderAuthHeader(); } }
+    async function handleSignup(e) { e.preventDefault(); const email = document.getElementById('signupEmail').value; const password = document.getElementById('signupPassword').value; const confirm = document.getElementById('signupConfirm').value; if (password !== confirm) { showAuthError('Passwords do not match'); return; } const { data, error } = await sb.auth.signUp({ email, password }); if (error) showAuthError(error.message); else showAuthSuccess('Account created! Check your email to confirm.'); }
+    async function handleForgot(e) { e.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await sb.auth.resetPasswordForEmail(email); if (error) showAuthError(error.message); else showAuthSuccess('Password reset email sent!'); }
+    async function handleLogout() { await sb.auth.signOut(); currentUser = null; renderAuthHeader(); }
+    sb.auth.getSession().then(({ data }) => { if (data.session) currentUser = data.session.user; renderAuthHeader(); });
     const socket = io();
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSound(type) {
