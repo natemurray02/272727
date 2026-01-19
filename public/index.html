@@ -80,6 +80,9 @@
     .community-cards{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:10}
     .card{width:40px;height:56px;background:linear-gradient(145deg,#fafafa,#e4e4e7);border-radius:5px;border:2px solid #e4e4e7;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:.9rem;box-shadow:0 3px 10px rgba(0,0,0,.4)}
     .card.small{width:30px;height:42px;font-size:.7rem}
+    .card.my-card{cursor:pointer;transition:all .2s}
+    .card.my-card:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(251,191,36,.4)}
+    .card.my-card.revealed{box-shadow:0 0 10px rgba(251,191,36,.8);border-color:#fbbf24}
     .card.red{color:#dc2626}
     .card.black{color:#18181b}
     .card.hidden{background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;position:relative;display:flex;align-items:center;justify-content:center}
@@ -297,7 +300,8 @@
       isPrivate: false,
       hasCodeFromUrl: !!urlTableCode,
       lastBoardLength: 0,
-      isSpectator: false
+      isSpectator: false,
+      revealedCards: [false, false]  // Track which of my cards are revealed
     };
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
@@ -416,8 +420,21 @@
         html += '<div class="player-box '+(isActive?'active':'')+' '+(isMe?'me':'')+' '+(p.folded?'folded':'')+' '+(p.sittingOut?'sitting-out':'')+'">';
         if (i === gs.dealerIdx) html += '<div class="badge badge-dealer">D</div>';
         if (p.allIn) html += '<div class="badge badge-allin">ALL IN</div>';
-        if (p.cards && p.cards.length) html += '<div class="player-cards">'+p.cards.map(c=>renderCard(c,true,!showCards)).join('')+'</div>';
-        else if (gs.handInProgress && !p.folded && !p.sittingOut) html += '<div class="player-cards">'+renderCard(null,true,true)+renderCard(null,true,true)+'</div>';
+        if (p.cards && p.cards.length) {
+          html += '<div class="player-cards">';
+          p.cards.forEach((c, cardIdx) => {
+            if (isMe && showCards) {
+              // My cards - can double-click to reveal to others
+              const isRevealed = state.revealedCards && state.revealedCards[cardIdx];
+              html += '<div class="card small '+(c.suit==='h'||c.suit==='d'?'red':'black')+' my-card'+(isRevealed?' revealed':'')+'" data-card-idx="'+cardIdx+'"><span>'+(c.rank==='T'?'10':c.rank)+'</span><span>'+SUIT_SYM[c.suit]+'</span></div>';
+            } else {
+              html += renderCard(c, true, !showCards);
+            }
+          });
+          html += '</div>';
+        } else if (gs.handInProgress && !p.folded && !p.sittingOut) {
+          html += '<div class="player-cards">'+renderCard(null,true,true)+renderCard(null,true,true)+'</div>';
+        }
         html += '<div class="player-name">'+(isMe?'You':p.name)+(p.sittingOut?' (out)':'')+'</div>';
         html += '<div class="player-chips">$'+fmt(p.chips)+'</div>';
         if (i === gs.sbIdx && gs.handInProgress) html += '<div class="badge badge-sb">SB</div>';
@@ -549,6 +566,17 @@
           playSound('click');
         };
       });
+      // Double-click to reveal card
+      document.querySelectorAll('.my-card').forEach(card => {
+        card.ondblclick = () => {
+          const cardIdx = parseInt(card.dataset.cardIdx);
+          state.revealedCards[cardIdx] = !state.revealedCards[cardIdx];
+          socket.emit('revealCard', { cardIdx, revealed: state.revealedCards[cardIdx] });
+          playSound('click');
+          render();
+        };
+      });
+      
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
       const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
       document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); } else { socket.emit('action',{action}); } playSound(action); }; });
@@ -619,6 +647,10 @@
     socket.on('playerSatIn', ({name,seatIdx}) => { state.actionLog.push({text:name+' is now active',type:'system'}); render(); });
     socket.on('seatTaken', ({seatIdx}) => { state.seatIdx=seatIdx; state.isSpectator=false; state.sittingOut=false; render(); });
     socket.on('leftSeat', () => { state.seatIdx=-1; state.isSpectator=true; render(); });
+    socket.on('cardRevealed', ({name,seatIdx,cardIdx,card}) => { 
+      state.actionLog.push({text: name + ' reveals: ' + card, type:'cards'}); 
+      render(); 
+    });
     
     // Player showed their cards voluntarily
     socket.on('playerShowedCards', ({name,seatIdx,cards}) => { 
@@ -633,7 +665,8 @@
     socket.on('handStarted', ({handNum}) => { 
       state.screen='game'; 
       state.winner=null; 
-      state.lastBoardLength = 0;  // Reset board tracking for new hand
+      state.lastBoardLength = 0;
+      state.revealedCards = [false, false];  // Reset revealed cards for new hand
       state.actionLog.push({text:'━━━ Hand #'+handNum+' ━━━',type:'system'}); 
       playSound('deal'); 
       render(); 
