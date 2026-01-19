@@ -113,7 +113,6 @@ function generateTableCode() {
   return code;
 }
 
-// UPDATED: Added isPrivate parameter
 function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = false) {
   const code = generateTableCode();
   const table = {
@@ -124,7 +123,7 @@ function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = fals
     sb: blinds[0],
     bb: blinds[1],
     defaultBuyIn: buyIn,
-    isPrivate,  // NEW: track if table is private
+    isPrivate,
     players: [],
     seats: Array(maxSeats).fill(null),
     gameState: null,
@@ -135,7 +134,6 @@ function createTable(hostId, hostName, maxSeats, blinds, buyIn, isPrivate = fals
   return table;
 }
 
-// UPDATED: Include isPrivate in table list
 function getTableList() {
   const list = [];
   tables.forEach((table, code) => {
@@ -148,7 +146,7 @@ function getTableList() {
       blinds: `$${table.sb}/$${table.bb}`,
       buyIn: table.defaultBuyIn,
       inProgress: table.handInProgress,
-      isPrivate: table.isPrivate  // NEW: send private status to clients
+      isPrivate: table.isPrivate
     });
   });
   return list;
@@ -162,17 +160,73 @@ function getActingPlayers(table) {
   return table.gameState.players.filter(p => p && !p.folded && !p.allIn && p.chips > 0);
 }
 
+// NEW: Calculate side pots from player contributions
+function calculateSidePots(table) {
+  const gs = table.gameState;
+  const pots = [];
+  
+  // Get all players who contributed (not folded or have contributions)
+  const contributors = [];
+  gs.players.forEach((p, i) => {
+    if (p && gs.totalContributions[i] > 0) {
+      contributors.push({
+        player: p,
+        seatIdx: i,
+        contribution: gs.totalContributions[i],
+        folded: p.folded
+      });
+    }
+  });
+  
+  // Sort by contribution amount
+  contributors.sort((a, b) => a.contribution - b.contribution);
+  
+  let processedAmount = 0;
+  
+  for (let i = 0; i < contributors.length; i++) {
+    const currentLevel = contributors[i].contribution;
+    if (currentLevel <= processedAmount) continue;
+    
+    const levelAmount = currentLevel - processedAmount;
+    let potAmount = 0;
+    const eligible = [];
+    
+    // Everyone who contributed at least this much adds to the pot
+    for (const c of contributors) {
+      if (c.contribution >= currentLevel) {
+        potAmount += levelAmount;
+        if (!c.folded) {
+          eligible.push(c.seatIdx);
+        }
+      }
+    }
+    
+    if (potAmount > 0 && eligible.length > 0) {
+      pots.push({
+        amount: potAmount,
+        eligible: eligible
+      });
+    }
+    
+    processedAmount = currentLevel;
+  }
+  
+  return pots;
+}
+
 function startHand(table) {
   const gs = table.gameState;
   gs.handNum++;
   gs.deck = shuffle(createDeck());
   gs.community = [];
-  gs.pot = 0;
+  gs.pot = 0;  // Main pot (chips that have been collected)
   gs.currentBet = 0;
   gs.minRaise = table.bb;
-  gs.bets = Array(table.maxSeats).fill(0);
+  gs.bets = Array(table.maxSeats).fill(0);  // Current round bets (in front of players)
+  gs.totalContributions = Array(table.maxSeats).fill(0);  // Total contributed this hand
   gs.acted = new Set();
   gs.phase = 'preflop';
+  gs.sidePots = [];  // Will be calculated at showdown
   table.handInProgress = true;
   
   // Reset players
@@ -182,9 +236,9 @@ function startHand(table) {
       p.folded = false;
       p.allIn = false;
       p.sittingOut = p.sittingOut || false;
-      p.wentToShowdown = false;  // Reset showdown flag
-      p.showCards = false;       // Reset show cards flag
-      p.voluntaryShow = false;   // Reset voluntary show flag
+      p.wentToShowdown = false;
+      p.showCards = false;
+      p.voluntaryShow = false;
     }
   });
   
@@ -221,17 +275,19 @@ function startHand(table) {
   gs.sbIdx = sbIdx;
   gs.bbIdx = bbIdx;
   
-  // Post blinds
+  // Post blinds - chips go in front of player, not to pot yet
   const sbAmt = Math.min(gs.players[sbIdx].chips, table.sb);
   gs.players[sbIdx].chips -= sbAmt;
   gs.bets[sbIdx] = sbAmt;
-  gs.pot += sbAmt;
+  gs.totalContributions[sbIdx] = sbAmt;
+  if (gs.players[sbIdx].chips === 0) gs.players[sbIdx].allIn = true;
   
   const bbAmt = Math.min(gs.players[bbIdx].chips, table.bb);
   gs.players[bbIdx].chips -= bbAmt;
   gs.bets[bbIdx] = bbAmt;
-  gs.pot += bbAmt;
+  gs.totalContributions[bbIdx] = bbAmt;
   gs.currentBet = bbAmt;
+  if (gs.players[bbIdx].chips === 0) gs.players[bbIdx].allIn = true;
   
   // Deal cards
   activeSeatIndices.forEach(i => {
@@ -249,9 +305,24 @@ function startHand(table) {
   return true;
 }
 
+// NEW: Collect bets into pot (called when betting round ends)
+function collectBets(table) {
+  const gs = table.gameState;
+  let collected = 0;
+  for (let i = 0; i < gs.bets.length; i++) {
+    collected += gs.bets[i];
+    gs.bets[i] = 0;
+  }
+  gs.pot += collected;
+  return collected;
+}
+
 function advancePhase(table) {
   const gs = table.gameState;
-  gs.bets = Array(table.maxSeats).fill(0);
+  
+  // Collect all bets into the pot
+  collectBets(table);
+  
   gs.currentBet = 0;
   gs.minRaise = table.bb;
   gs.acted = new Set();
@@ -289,38 +360,86 @@ function showdown(table) {
   gs.phase = 'showdown';
   table.handInProgress = false;
   
+  // Collect any remaining bets
+  collectBets(table);
+  
   const active = getActivePlayers(table);
   
   // If everyone folded to one player, they win without showing
   if (active.length === 1) {
-    active[0].chips += gs.pot;
-    // Don't mark showCards - winner doesn't have to show
-    return { winners: [active[0]], hand: 'Everyone folded', amount: gs.pot, noShow: true };
+    const winner = active[0];
+    const winnerIdx = gs.players.indexOf(winner);
+    winner.chips += gs.pot;
+    return { 
+      winners: [{ player: winner, amount: gs.pot }], 
+      hand: 'Everyone folded', 
+      noShow: true,
+      potResults: [{ amount: gs.pot, winners: [winnerIdx] }]
+    };
   }
   
   // Multiple players went to showdown - evaluate hands
-  let bestHand = { rank: 0, value: 0 };
   active.forEach(p => {
     const allCards = [...p.cards, ...gs.community];
     p.handResult = evaluateHand(allCards);
-    p.wentToShowdown = true;  // Mark that this player went to showdown
-    if (p.handResult.rank > bestHand.rank || 
-        (p.handResult.rank === bestHand.rank && p.handResult.value > bestHand.value)) {
-      bestHand = p.handResult;
-    }
+    p.wentToShowdown = true;
   });
   
-  const winners = active.filter(p => 
-    p.handResult.rank === bestHand.rank && p.handResult.value === bestHand.value
-  );
+  // Calculate side pots
+  const sidePots = calculateSidePots(table);
   
-  // Mark winners to show their cards
-  winners.forEach(w => w.showCards = true);
+  const potResults = [];
+  const winnerAmounts = {};
   
-  const share = Math.floor(gs.pot / winners.length);
-  winners.forEach(w => w.chips += share);
+  // Award each pot
+  for (const pot of sidePots) {
+    // Find best hand among eligible players
+    let bestHand = { rank: 0, value: 0 };
+    const eligiblePlayers = pot.eligible
+      .map(idx => gs.players[idx])
+      .filter(p => p && !p.folded);
+    
+    for (const p of eligiblePlayers) {
+      if (p.handResult.rank > bestHand.rank || 
+          (p.handResult.rank === bestHand.rank && p.handResult.value > bestHand.value)) {
+        bestHand = p.handResult;
+      }
+    }
+    
+    // Find winners of this pot
+    const potWinners = eligiblePlayers.filter(p => 
+      p.handResult.rank === bestHand.rank && p.handResult.value === bestHand.value
+    );
+    
+    const share = Math.floor(pot.amount / potWinners.length);
+    const remainder = pot.amount % potWinners.length;
+    
+    potWinners.forEach((w, i) => {
+      const winnerIdx = gs.players.indexOf(w);
+      const amount = share + (i === 0 ? remainder : 0);  // First winner gets remainder
+      w.chips += amount;
+      w.showCards = true;
+      winnerAmounts[winnerIdx] = (winnerAmounts[winnerIdx] || 0) + amount;
+    });
+    
+    potResults.push({
+      amount: pot.amount,
+      winners: potWinners.map(w => gs.players.indexOf(w)),
+      hand: bestHand.name
+    });
+  }
   
-  return { winners, hand: bestHand.name, amount: share };
+  // Build winners array for response
+  const winners = Object.entries(winnerAmounts).map(([idx, amount]) => ({
+    player: gs.players[parseInt(idx)],
+    amount
+  }));
+  
+  return { 
+    winners, 
+    hand: potResults[0]?.hand || 'Unknown',
+    potResults
+  };
 }
 
 function processAction(table, seatIdx, action, amount = 0) {
@@ -340,7 +459,7 @@ function processAction(table, seatIdx, action, amount = 0) {
     const callAmt = Math.min(toCall, player.chips);
     player.chips -= callAmt;
     gs.bets[seatIdx] += callAmt;
-    gs.pot += callAmt;
+    gs.totalContributions[seatIdx] += callAmt;
     if (player.chips === 0) player.allIn = true;
   } else if (action === 'raise') {
     const raiseAmt = amount;
@@ -350,45 +469,63 @@ function processAction(table, seatIdx, action, amount = 0) {
     const toAdd = raiseAmt - gs.bets[seatIdx];
     if (toAdd > player.chips) return { error: 'Not enough chips' };
     player.chips -= toAdd;
-    gs.pot += toAdd;
-    gs.minRaise = raiseAmt - gs.currentBet;
     gs.bets[seatIdx] = raiseAmt;
+    gs.totalContributions[seatIdx] += toAdd;
+    gs.minRaise = raiseAmt - gs.currentBet;
     gs.currentBet = raiseAmt;
     gs.acted = new Set();
     if (player.chips === 0) player.allIn = true;
   } else if (action === 'allin') {
-    const allInAmt = player.chips + gs.bets[seatIdx];
-    gs.pot += player.chips;
-    if (allInAmt > gs.currentBet) {
-      gs.minRaise = allInAmt - gs.currentBet;
-      gs.currentBet = allInAmt;
-      gs.acted = new Set();
-    }
-    gs.bets[seatIdx] = allInAmt;
+    const allInTotal = player.chips;
+    const newBetTotal = gs.bets[seatIdx] + allInTotal;
+    
+    gs.bets[seatIdx] = newBetTotal;
+    gs.totalContributions[seatIdx] += allInTotal;
     player.chips = 0;
     player.allIn = true;
+    
+    // Only update currentBet and reset acted if this is a raise
+    if (newBetTotal > gs.currentBet) {
+      const raiseAmount = newBetTotal - gs.currentBet;
+      // Only reset acted if it's a full raise (>= minRaise)
+      if (raiseAmount >= gs.minRaise) {
+        gs.minRaise = raiseAmount;
+        gs.acted = new Set();
+      }
+      gs.currentBet = newBetTotal;
+    }
   }
   
   gs.acted.add(seatIdx);
   
-  // Check if hand is over
+  // Check if hand is over (everyone folded to one player)
   const active = getActivePlayers(table);
   if (active.length === 1) {
-    active[0].chips += gs.pot;
+    // Collect remaining bets first
+    collectBets(table);
+    
+    const winner = active[0];
+    winner.chips += gs.pot;
     gs.phase = 'showdown';
     table.handInProgress = false;
-    return { winner: active[0], hand: 'Everyone folded', amount: gs.pot };
+    return { 
+      winner, 
+      hand: 'Everyone folded', 
+      amount: gs.pot,
+      potResults: [{ amount: gs.pot, winners: [gs.players.indexOf(winner)] }]
+    };
   }
   
   // Check if betting round is complete
   const actors = getActingPlayers(table);
   const allActed = actors.every(p => {
     const idx = gs.players.indexOf(p);
-    return gs.acted.has(idx) && (gs.bets[idx] >= gs.currentBet || p.allIn);
+    return gs.acted.has(idx) && gs.bets[idx] >= gs.currentBet;
   });
   
   if (allActed || actors.length === 0) {
     if (actors.length <= 1) {
+      // Run out the board
       while (gs.community.length < 5) {
         gs.deck.pop();
         gs.community.push(gs.deck.pop());
@@ -418,10 +555,6 @@ function getPublicGameState(table, forPlayerId = null) {
     if (!p) return null;
     const isMe = p.id === forPlayerId;
     
-    // Determine if this player's cards should be visible
-    // Cards are visible if:
-    // 1. It's the player's own cards (isMe)
-    // 2. Player went to showdown AND (is winner OR chose to show)
     const isShowdown = gs.phase === 'showdown';
     const shouldShowCards = isMe || (isShowdown && p.wentToShowdown && (p.showCards || p.voluntaryShow));
     
@@ -436,16 +569,16 @@ function getPublicGameState(table, forPlayerId = null) {
       seatIdx: i,
       isMe,
       wentToShowdown: p.wentToShowdown || false,
-      canShow: isMe && isShowdown && !p.showCards && !p.voluntaryShow  // Can player choose to show?
+      canShow: isMe && isShowdown && !p.showCards && !p.voluntaryShow
     };
   });
   
   return {
     phase: gs.phase,
-    pot: gs.pot,
+    pot: gs.pot,  // Collected pot in the middle
+    bets: gs.bets,  // Current bets in front of players
     community: gs.community,
     currentBet: gs.currentBet,
-    bets: gs.bets,
     currentIdx: gs.currentIdx,
     dealerIdx: gs.dealerIdx,
     sbIdx: gs.sbIdx,
@@ -456,8 +589,8 @@ function getPublicGameState(table, forPlayerId = null) {
     bb: table.bb,
     maxSeats: table.maxSeats,
     handInProgress: table.handInProgress,
-    isPrivate: table.isPrivate,  // NEW: include in game state
-    code: table.code  // NEW: include code so players can share link
+    isPrivate: table.isPrivate,
+    code: table.code
   };
 }
 
@@ -477,7 +610,6 @@ io.on('connection', (socket) => {
     socket.emit('tableList', getTableList());
   });
   
-  // UPDATED: Accept isPrivate parameter
   socket.on('createTable', ({ name, maxSeats, blinds, buyIn, isPrivate }) => {
     const table = createTable(socket.id, name, maxSeats, blinds, buyIn, isPrivate || false);
     
@@ -502,6 +634,7 @@ io.on('connection', (socket) => {
       currentBet: 0,
       minRaise: blinds[1],
       bets: Array(maxSeats).fill(0),
+      totalContributions: Array(maxSeats).fill(0),
       acted: new Set(),
       phase: 'waiting',
       dealerIdx: 0,
@@ -516,7 +649,6 @@ io.on('connection', (socket) => {
     socket.tableCode = table.code;
     socket.seatIdx = 0;
     
-    // NEW: Send isPrivate and code back to client for UI display
     socket.emit('tableCreated', { 
       code: table.code, 
       seatIdx: 0, 
@@ -534,7 +666,6 @@ io.on('connection', (socket) => {
     broadcastTableList();
   });
   
-  // UPDATED: Add hasCode parameter for private table access
   socket.on('joinTable', ({ code, name, buyIn, hasCode }) => {
     const table = tables.get(code.toUpperCase());
     if (!table) {
@@ -542,8 +673,6 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // NEW: Check if private table and user doesn't have code
-    // hasCode = true means they came via direct link or entered code manually
     if (table.isPrivate && !hasCode) {
       socket.emit('error', { message: 'This is a private table. You need the table code or link to join.' });
       return;
@@ -562,7 +691,7 @@ io.on('connection', (socket) => {
       cards: [],
       folded: false,
       allIn: false,
-      sittingOut: table.handInProgress, // Sit out if hand is in progress
+      sittingOut: table.handInProgress,
       socketId: socket.id
     };
     
@@ -581,7 +710,6 @@ io.on('connection', (socket) => {
       isPrivate: table.isPrivate
     });
     
-    // Send personalized update to all players
     table.seats.forEach((p, i) => {
       if (p) {
         io.to(p.socketId).emit('tableUpdate', {
@@ -607,7 +735,6 @@ io.on('connection', (socket) => {
       player.sittingOut = false;
       io.to(table.code).emit('playerSatIn', { name: player.name, seatIdx: socket.seatIdx });
       
-      // Send updates
       table.seats.forEach((p, i) => {
         if (p) {
           io.to(p.socketId).emit('tableUpdate', {
@@ -622,7 +749,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // Voluntary show cards at showdown
   socket.on('showCards', () => {
     const table = tables.get(socket.tableCode);
     if (!table) return;
@@ -631,7 +757,6 @@ io.on('connection', (socket) => {
     if (player && table.gameState.phase === 'showdown') {
       player.voluntaryShow = true;
       
-      // Send updated game state to all players
       table.seats.forEach((p, i) => {
         if (p) {
           io.to(p.socketId).emit('gameUpdate', getPublicGameState(table, p.id));
@@ -684,36 +809,41 @@ io.on('connection', (socket) => {
       amount
     });
     
-    // Send sound
     io.to(table.code).emit('sound', { type: action });
     
-    // Send updated game state
     table.seats.forEach((p, i) => {
       if (p) {
         io.to(p.socketId).emit('gameUpdate', getPublicGameState(table, p.id));
       }
     });
     
-    // Handle phase changes
     if (result === 'continue') {
       const phase = table.gameState.phase;
       io.to(table.code).emit('phaseChange', { phase });
       io.to(table.code).emit('sound', { type: 'deal' });
+      
+      // NEW: Emit event to animate chips sliding to pot
+      io.to(table.code).emit('collectBets');
     }
     
-    // Handle showdown/winner
     if (result.winners || result.winner) {
-      const winners = result.winners || [result.winner];
+      const winners = result.winners || [{ player: result.winner, amount: result.amount }];
+      
+      // NEW: Emit collectBets before showing winner
+      io.to(table.code).emit('collectBets');
+      
       io.to(table.code).emit('handComplete', {
-        winners: winners.map(w => ({ name: w.name, seatIdx: table.gameState.players.indexOf(w) })),
+        winners: winners.map(w => ({ 
+          name: w.player.name, 
+          seatIdx: table.gameState.players.indexOf(w.player),
+          amount: w.amount 
+        })),
         hand: result.hand,
-        amount: result.amount
+        potResults: result.potResults
       });
       io.to(table.code).emit('sound', { type: 'win' });
       
-      // Start new hand after delay
       setTimeout(() => {
-        // Remove busted players
         table.gameState.players.forEach((p, i) => {
           if (p && p.chips <= 0) {
             p.sittingOut = true;
@@ -766,7 +896,6 @@ io.on('connection', (socket) => {
     if (seatIdx !== undefined && table.seats[seatIdx]) {
       const player = table.seats[seatIdx];
       
-      // If hand in progress, fold them
       if (table.handInProgress && table.gameState.players[seatIdx]) {
         table.gameState.players[seatIdx].folded = true;
         table.gameState.players[seatIdx].sittingOut = true;
@@ -777,7 +906,6 @@ io.on('connection', (socket) => {
       
       io.to(table.code).emit('playerLeft', { name: player.name, seatIdx });
       
-      // Send updates
       table.seats.forEach((p, i) => {
         if (p) {
           io.to(p.socketId).emit('tableUpdate', {
@@ -791,7 +919,6 @@ io.on('connection', (socket) => {
       });
     }
     
-    // Clean up empty tables
     if (table.seats.every(s => s === null)) {
       tables.delete(table.code);
     }
