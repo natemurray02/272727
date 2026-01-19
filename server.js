@@ -247,6 +247,7 @@ function startHand(table) {
       p.wentToShowdown = false;
       p.showCards = false;
       p.voluntaryShow = false;
+      p.revealedCards = [false, false];
     }
   });
   
@@ -575,6 +576,20 @@ function getPublicGameState(table, forPlayerId = null) {
     // Show cards if: it's me, OR at showdown AND (winner who must show OR voluntarily showed)
     const shouldShowCards = isMe || (isShowdown && p.wentToShowdown && (p.showCards || p.voluntaryShow));
     
+    // Build cards array - show revealed cards even if not showdown
+    let cards = [];
+    if (shouldShowCards) {
+      cards = p.cards;
+    } else if (p.cards?.length) {
+      // Check for individually revealed cards
+      cards = p.cards.map((card, idx) => {
+        if (p.revealedCards && p.revealedCards[idx]) {
+          return card; // Show this card
+        }
+        return {}; // Hidden card
+      });
+    }
+    
     return {
       id: p.id,
       name: p.name,
@@ -582,10 +597,11 @@ function getPublicGameState(table, forPlayerId = null) {
       folded: p.folded,
       allIn: p.allIn,
       sittingOut: p.sittingOut,
-      cards: shouldShowCards ? p.cards : (p.cards?.length ? [{}, {}] : []),
+      cards: cards,
       seatIdx: i,
       isMe,
       wentToShowdown: p.wentToShowdown || false,
+      revealedCards: p.revealedCards || [false, false],
       // Can show if: it's me, at showdown, haven't already shown, and (won by fold OR went to showdown but lost)
       canShow: isMe && isShowdown && !p.showCards && !p.voluntaryShow && p.cards && p.cards.length > 0
     };
@@ -800,6 +816,36 @@ io.on('connection', (socket) => {
       // AUTO-START: Try to start the game when a player sits in
       tryAutoStartGame(table);
     }
+  });
+  
+  socket.on('revealCard', ({ cardIdx, revealed }) => {
+    const table = tables.get(socket.tableCode);
+    if (!table) return;
+    
+    const player = table.gameState.players[socket.seatIdx];
+    if (!player || !player.cards || cardIdx < 0 || cardIdx > 1) return;
+    
+    // Initialize revealedCards array if not exists
+    if (!player.revealedCards) player.revealedCards = [false, false];
+    player.revealedCards[cardIdx] = revealed;
+    
+    // Notify all players about the reveal
+    const card = player.cards[cardIdx];
+    if (revealed && card) {
+      io.to(table.code).emit('cardRevealed', { 
+        name: player.name, 
+        seatIdx: socket.seatIdx,
+        cardIdx,
+        card: formatCard(card)
+      });
+    }
+    
+    // Send updated game state to all players
+    table.seats.forEach((p, i) => {
+      if (p) {
+        io.to(p.socketId).emit('gameUpdate', getPublicGameState(table, p.id));
+      }
+    });
   });
   
   socket.on('showCards', () => {
