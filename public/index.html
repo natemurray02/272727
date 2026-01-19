@@ -95,7 +95,11 @@
     .player-cards{display:flex;justify-content:center;gap:3px;margin-bottom:.25rem}
     .player-name{font-size:.6rem;color:#e4e4e7;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .player-chips{font-size:.65rem;font-family:monospace;color:#fbbf24;font-weight:700}
-    .player-bet{position:absolute;top:-18px;left:50%;transform:translateX(-50%);padding:2px 6px;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,0,.3);border-radius:8px;font-size:.6rem;font-family:monospace;color:#ffe55c;white-space:nowrap}
+    .player-bet{position:absolute;top:-25px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,0,.3);border-radius:8px;font-size:.65rem;font-family:monospace;color:#ffe55c;white-space:nowrap}
+    .bet-chips{display:flex;gap:1px}
+    .bet-chip{width:10px;height:10px;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.5)}
+    .bet-chip.chip-red{background:linear-gradient(180deg,#ef4444,#991b1b);border:1px solid #fca5a5}
+    .bet-chip.chip-gold{background:linear-gradient(180deg,#fbbf24,#b45309);border:1px solid #fcd34d}
     .badge{position:absolute;font-size:.35rem;padding:2px 4px;border-radius:3px;font-weight:600;color:#fff}
     .badge-dealer{top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#fef3c7,#fbbf24);color:#78350f;display:flex;align-items:center;justify-content:center;font-size:.45rem}
     .badge-sb{bottom:-6px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#22c55e,#16a34a)}
@@ -402,7 +406,13 @@
         // Show cards if it's me, OR if at showdown and cards have suit (means server sent them)
         const showCards = isMe || (gs.phase === 'showdown' && p.cards && p.cards.length > 0 && p.cards[0].suit);
         html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%">';
-        if (gs.bets[i] > 0) html += '<div class="player-bet">$'+fmt(gs.bets[i])+'</div>';
+        if (gs.bets[i] > 0) {
+          const betChips = Math.min(6, Math.max(1, Math.ceil(gs.bets[i] / gs.bb)));
+          html += '<div class="player-bet"><div class="bet-chips">';
+          for(let c=0; c<Math.ceil(betChips/2); c++) html += '<div class="bet-chip chip-red"></div>';
+          for(let c=0; c<Math.ceil(betChips/3); c++) html += '<div class="bet-chip chip-gold"></div>';
+          html += '</div><span>$'+fmt(gs.bets[i])+'</span></div>';
+        }
         html += '<div class="player-box '+(isActive?'active':'')+' '+(isMe?'me':'')+' '+(p.folded?'folded':'')+' '+(p.sittingOut?'sitting-out':'')+'">';
         if (i === gs.dealerIdx) html += '<div class="badge badge-dealer">D</div>';
         if (p.allIn) html += '<div class="badge badge-allin">ALL IN</div>';
