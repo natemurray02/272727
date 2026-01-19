@@ -118,17 +118,18 @@
     .player-chip{padding:.4rem .8rem;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:16px;color:#fbbf24;font-size:.8rem}
     .start-btn{padding:.9rem 2.5rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:1.1rem;font-weight:bold;cursor:pointer;letter-spacing:.1em}
     .start-btn:disabled{background:#3f3f46;cursor:not-allowed}
-    .chat-box{position:fixed;bottom:100px;left:.5rem;width:180px;height:130px;background:linear-gradient(180deg,rgba(9,9,11,.9),rgba(9,9,11,.95));border-radius:8px;border:1px solid rgba(251,191,36,.1);z-index:45;display:flex;flex-direction:column}
-    .chat-header{padding:.3rem .4rem;border-bottom:1px solid rgba(251,191,36,.1);font-size:.6rem;color:#fbbf24;font-weight:600}
-    .chat-messages{flex:1;overflow-y:auto;padding:.25rem;font-size:.55rem}
-    .chat-msg{margin-bottom:.15rem;color:#d4d4d8}
+    .chat-box{position:fixed;bottom:100px;left:.5rem;width:220px;height:180px;background:linear-gradient(180deg,rgba(9,9,11,.95),rgba(9,9,11,.98));border-radius:10px;border:1px solid rgba(251,191,36,.2);z-index:45;display:flex;flex-direction:column}
+    .chat-header{padding:.4rem .6rem;border-bottom:1px solid rgba(251,191,36,.15);font-size:.7rem;color:#fbbf24;font-weight:600}
+    .chat-messages{flex:1;overflow-y:auto;padding:.4rem;font-size:.65rem}
+    .chat-msg{margin-bottom:.25rem;color:#d4d4d8;line-height:1.3}
     .chat-msg .name{color:#fbbf24;font-weight:600}
-    .chat-input{padding:.25rem;border-top:1px solid rgba(251,191,36,.1)}
-    .chat-input input{width:100%;background:rgba(0,0,0,.4);border:1px solid rgba(251,191,36,.15);border-radius:4px;padding:.25rem .4rem;color:#fff;font-size:.55rem;margin:0}
-    .action-log{position:fixed;bottom:100px;right:.5rem;width:180px;height:130px;background:linear-gradient(180deg,rgba(9,9,11,.9),rgba(9,9,11,.95));border-radius:8px;border:1px solid rgba(251,191,36,.1);z-index:45;display:flex;flex-direction:column}
-    .log-header{padding:.3rem .4rem;border-bottom:1px solid rgba(251,191,36,.1);font-size:.6rem;color:#f59e0b;font-weight:600}
-    .log-messages{flex:1;overflow-y:auto;padding:.25rem;font-size:.55rem}
-    .log-msg{margin-bottom:.15rem}
+    .chat-input-container{padding:.4rem;border-top:1px solid rgba(251,191,36,.15)}
+    .chat-input-container input{width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(251,191,36,.2);border-radius:6px;padding:.4rem .6rem;color:#fff;font-size:.7rem;margin:0}
+    .chat-input-container input:focus{outline:none;border-color:#fbbf24}
+    .action-log{position:fixed;bottom:100px;right:.5rem;width:200px;height:180px;background:linear-gradient(180deg,rgba(9,9,11,.95),rgba(9,9,11,.98));border-radius:10px;border:1px solid rgba(251,191,36,.2);z-index:45;display:flex;flex-direction:column}
+    .log-header{padding:.4rem .6rem;border-bottom:1px solid rgba(251,191,36,.15);font-size:.7rem;color:#f59e0b;font-weight:600}
+    .log-messages{flex:1;overflow-y:auto;padding:.4rem;font-size:.65rem}
+    .log-msg{margin-bottom:.25rem;line-height:1.3}
     .log-msg.fold{color:#71717a}.log-msg.check{color:#60a5fa}.log-msg.call{color:#4ade80}.log-msg.raise,.log-msg.allin{color:#f87171}.log-msg.win{color:#fbbf24}.log-msg.system{color:#a1a1aa}
     .winner-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;background:rgba(0,0,0,.7);animation:fadeIn .3s}
     .winner-box{text-align:center;padding:1.5rem 2.5rem;background:linear-gradient(145deg,#18181b,#09090b);border:2px solid #fbbf24;border-radius:1rem;box-shadow:0 0 60px rgba(251,191,36,.3)}
@@ -136,6 +137,8 @@
     .winner-hand{color:#a1a1aa;font-size:.9rem;margin-bottom:.4rem}
     .winner-amount{font-size:1.3rem;color:#22c55e;font-family:monospace;font-weight:bold}
     .sit-in-btn{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);padding:.8rem 2rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:bold;cursor:pointer;z-index:60}
+    .btn-show-cards{background:#1a1a1a;border:2px solid #d4af37;color:#d4af37;font-weight:bold}
+    .btn-show-cards:hover{background:#d4af37;color:#1a1a1a}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     .hidden{display:none!important}
     .auth-header{position:fixed;top:0;right:0;display:flex;align-items:center;padding:.75rem 1rem;z-index:200}
@@ -198,6 +201,9 @@
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let currentUser = null;
+    
+    // CHAT: Store input value independently
+    let chatInputValue = '';
     
     function renderAuthHeader() {
       const header = document.getElementById('authHeader');
@@ -274,8 +280,8 @@
       winner:null, 
       tables:[], 
       sittingOut:false,
-      isPrivate: false,  // NEW: track if creating private table
-      hasCodeFromUrl: !!urlTableCode  // NEW: track if user came via direct link
+      isPrivate: false,
+      hasCodeFromUrl: !!urlTableCode
     };
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
@@ -308,6 +314,12 @@
       else if (state.screen === 'waiting') app.innerHTML = renderWaiting();
       else if (state.screen === 'game') app.innerHTML = renderGame();
       attachEvents();
+      
+      // CHAT: Restore input value after render
+      const chatInput = document.getElementById('chatInput');
+      if (chatInput && chatInput.value !== chatInputValue) {
+        chatInput.value = chatInputValue;
+      }
     }
     
     function renderLobby() {
@@ -343,7 +355,8 @@
         if (!p) { html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat">Empty</div></div>'; return; }
         const isActive = gs.currentIdx === i && gs.handInProgress;
         const isMe = p.isMe;
-        const showCards = isMe || gs.phase === 'showdown';
+        // FIXED: Show cards if it's me, OR if at showdown and cards have suit (means server sent them)
+        const showCards = isMe || (gs.phase === 'showdown' && p.cards && p.cards.length > 0 && p.cards[0].suit);
         html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%">';
         if (gs.bets[i] > 0) html += '<div class="player-bet">$'+fmt(gs.bets[i])+'</div>';
         html += '<div class="player-box '+(isActive?'active':'')+' '+(isMe?'me':'')+' '+(p.folded?'folded':'')+' '+(p.sittingOut?'sitting-out':'')+'">';
@@ -369,13 +382,16 @@
       const minRaise = gs.currentBet + (gs.bb||2);
       const maxRaise = myPlayer ? myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0) : 0;
       let html = '<div class="game-container">'+renderGameTable();
-      html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('')+'</div><div class="chat-input"><input type="text" id="chatInput" placeholder="Type a message..."></div></div>';
+      
+      // CHAT: Separate messages div from input - input uses stored value
+      html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('')+'</div><div class="chat-input-container"><input type="text" id="chatInput" placeholder="Type a message..." value="'+chatInputValue.replace(/"/g, '&quot;')+'"></div></div>';
+      
       html += '<div class="action-log"><div class="log-header">📋 Action Log</div><div class="log-messages">'+state.actionLog.map(m=>'<div class="log-msg '+m.type+'">'+m.text+'</div>').join('')+'</div></div>';
       if (state.sittingOut) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
       
-      // Show "Show Cards" button at showdown if player can show
+      // Show "Show Cards" button at showdown if player can show - NOW WITH GOLD/BLACK STYLING
       if (gs.phase === 'showdown' && myPlayer && myPlayer.canShow) {
-        html += '<button class="sit-in-btn" id="showCardsBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">Show Cards</button>';
+        html += '<button class="sit-in-btn btn-show-cards" id="showCardsBtn">Show Cards</button>';
       }
       
       if (isMyTurn && !state.sittingOut) {
@@ -401,7 +417,6 @@
           if (!state.name.trim()) { alert('Enter your name first'); return; } 
           const code = btn.dataset.code; 
           const table = state.tables.find(t=>t.code===code); 
-          // Public tables: hasCode = true (they can always join)
           socket.emit('joinTable', { code, name:state.name, buyIn:table?table.buyIn:state.buyIn, hasCode: true }); 
           localStorage.setItem('pokerName', state.name); 
           playSound('click'); 
@@ -422,7 +437,6 @@
       if (backToLobbyBtn) backToLobbyBtn.onclick = () => {
         state.hasCodeFromUrl = false;
         state.tableCode = '';
-        // Clear URL parameter
         window.history.replaceState({}, document.title, window.location.pathname);
         render();
       };
@@ -437,7 +451,7 @@
       const privateToggle = document.getElementById('privateToggle');
       if (privateToggle) privateToggle.onclick = () => { state.isPrivate = !state.isPrivate; playSound('click'); render(); };
       
-      // Create table (now includes isPrivate)
+      // Create table
       const createBtn = document.getElementById('createBtn'); 
       if (createBtn) createBtn.onclick = () => { 
         if (!state.name.trim()) { alert('Enter your name'); return; } 
@@ -446,13 +460,13 @@
           maxSeats: state.maxSeats, 
           blinds: BLINDS[state.blindsIdx], 
           buyIn: state.buyIn,
-          isPrivate: state.isPrivate  // NEW: send isPrivate to server
+          isPrivate: state.isPrivate
         }); 
         localStorage.setItem('pokerName', state.name); 
         playSound('click'); 
       };
       
-      // Join by code (manual entry)
+      // Join by code
       const joinBtn = document.getElementById('joinBtn'); 
       if (joinBtn) joinBtn.onclick = () => { 
         if (!state.name.trim()) { alert('Enter your name'); return; } 
@@ -463,7 +477,7 @@
       };
       
       const startBtn = document.getElementById('startBtn'); if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
-      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; socket.emit('getTables'); render(); };
+      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; chatInputValue=''; socket.emit('getTables'); render(); };
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
       const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
       document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); state.showRaise=false; } else { socket.emit('action',{action}); } playSound(action); }; });
@@ -472,7 +486,19 @@
       const raiseMinus = document.getElementById('raiseMinus'); if (raiseMinus) raiseMinus.onclick = () => { const gs=state.gameState; state.raiseAmt=Math.max(gs.currentBet+gs.bb,(state.raiseAmt||gs.currentBet+gs.bb)-gs.bb); playSound('click'); render(); };
       const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
       document.querySelectorAll('[data-preset]').forEach(btn => { btn.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; const mult=parseFloat(btn.dataset.preset); state.raiseAmt=Math.min(maxRaise,Math.max(gs.currentBet+gs.bb,Math.floor(gs.pot*mult))); playSound('click'); render(); }; });
-      const chatInput = document.getElementById('chatInput'); if (chatInput) chatInput.onkeydown = e => { if (e.key==='Enter'&&chatInput.value.trim()) { socket.emit('chat',{message:chatInput.value}); chatInput.value=''; } };
+      
+      // CHAT: Track input value independently
+      const chatInput = document.getElementById('chatInput'); 
+      if (chatInput) {
+        chatInput.oninput = e => { chatInputValue = e.target.value; };
+        chatInput.onkeydown = e => { 
+          if (e.key==='Enter' && chatInputValue.trim()) { 
+            socket.emit('chat',{message: chatInputValue}); 
+            chatInputValue = ''; 
+            chatInput.value = '';
+          } 
+        };
+      }
     }
     
     socket.on('tableList', tables => { state.tables=tables; if(state.screen==='lobby')render(); });
@@ -489,9 +515,20 @@
     socket.on('sound', ({type}) => { playSound(type); });
     socket.on('phaseChange', ({phase}) => { state.actionLog.push({text:'--- '+phase.toUpperCase()+' ---',type:'system'}); });
     socket.on('handComplete', ({winners,hand,amount}) => { state.winner={names:winners.map(w=>w.name),hand,amount}; state.actionLog.push({text:winners.map(w=>w.name).join(', ')+' wins $'+fmt(amount)+' with '+hand,type:'win'}); playSound('win'); render(); setTimeout(()=>{state.winner=null;render();},3500); });
-    socket.on('chatMessage', ({name,message}) => { state.chatMessages.push({name,message}); render(); const chatEl=document.getElementById('chatMessages'); if(chatEl)chatEl.scrollTop=chatEl.scrollHeight; });
+    
+    // CHAT: Only update messages, don't touch input
+    socket.on('chatMessage', ({name,message}) => { 
+      state.chatMessages.push({name,message}); 
+      // Only update the messages div, not the whole thing
+      const chatEl = document.getElementById('chatMessages'); 
+      if (chatEl) {
+        chatEl.innerHTML = state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('');
+        chatEl.scrollTop = chatEl.scrollHeight; 
+      }
+    });
+    
     socket.on('error', ({message}) => { alert(message); });
-    socket.on('gameOver', ({winner}) => { alert('Game Over! '+winner+' wins!'); state.screen='lobby'; state.isPrivate=false; socket.emit('getTables'); render(); });
+    socket.on('gameOver', ({winner}) => { alert('Game Over! '+winner+' wins!'); state.screen='lobby'; state.isPrivate=false; chatInputValue=''; socket.emit('getTables'); render(); });
     
     render();
     socket.emit('getTables');
