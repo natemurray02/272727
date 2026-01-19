@@ -420,20 +420,42 @@
         html += '<div class="player-box '+(isActive?'active':'')+' '+(isMe?'me':'')+' '+(p.folded?'folded':'')+' '+(p.sittingOut?'sitting-out':'')+'">';
         if (i === gs.dealerIdx) html += '<div class="badge badge-dealer">D</div>';
         if (p.allIn) html += '<div class="badge badge-allin">ALL IN</div>';
-        if (p.cards && p.cards.length) {
+        
+        // Check if player has actual cards (with suit) or just placeholders
+        const hasRealCards = p.cards && p.cards.length && p.cards[0] && p.cards[0].suit;
+        const hasPlaceholderCards = p.cards && p.cards.length && !p.cards[0].suit;
+        
+        if (hasRealCards) {
           html += '<div class="player-cards">';
           p.cards.forEach((c, cardIdx) => {
-            if (isMe && showCards) {
+            if (isMe) {
               // My cards - can double-click to reveal to others
               const isRevealed = state.revealedCards && state.revealedCards[cardIdx];
               html += '<div class="card small '+(c.suit==='h'||c.suit==='d'?'red':'black')+' my-card'+(isRevealed?' revealed':'')+'" data-card-idx="'+cardIdx+'"><span>'+(c.rank==='T'?'10':c.rank)+'</span><span>'+SUIT_SYM[c.suit]+'</span></div>';
             } else {
-              html += renderCard(c, true, !showCards);
+              // Opponent's visible cards (showdown or revealed)
+              html += renderCard(c, true, false);
             }
           });
           html += '</div>';
-        } else if (gs.handInProgress && !p.folded && !p.sittingOut) {
-          html += '<div class="player-cards">'+renderCard(null,true,true)+renderCard(null,true,true)+'</div>';
+        } else if (hasPlaceholderCards || (gs.handInProgress && !p.folded && !p.sittingOut)) {
+          // Show card backs for opponents with hidden cards
+          html += '<div class="player-cards">';
+          if (p.cards && p.cards.length) {
+            // Check each card - might be partially revealed
+            p.cards.forEach((c, cardIdx) => {
+              if (c && c.suit) {
+                // This card is revealed
+                html += renderCard(c, true, false);
+              } else {
+                // Hidden card
+                html += renderCard(null, true, true);
+              }
+            });
+          } else {
+            html += renderCard(null,true,true)+renderCard(null,true,true);
+          }
+          html += '</div>';
         }
         html += '<div class="player-name">'+(isMe?'You':p.name)+(p.sittingOut?' (out)':'')+'</div>';
         html += '<div class="player-chips">$'+fmt(p.chips)+'</div>';
