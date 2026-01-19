@@ -55,13 +55,16 @@
     .game-container{min-height:100vh;position:relative;overflow:hidden}
     .header{display:flex;justify-content:space-between;align-items:center;padding:.5rem 1rem;margin:.25rem .5rem;border-radius:.75rem;background:linear-gradient(180deg,rgba(24,24,27,.9),rgba(9,9,11,.95));border:1px solid rgba(251,191,36,.15)}
     .header-logo{color:#fbbf24;font-weight:bold;font-size:1rem}
-    .header-info{font-size:.75rem;color:#a1a1aa}
+    .header-info{font-size:.75rem;color:#a1a1aa;display:flex;align-items:center;gap:.5rem}
     .header-info span{color:#fbbf24}
     .header-info .private-indicator{color:#a78bfa}
+    .header-buttons{display:flex;gap:.5rem;align-items:center}
     .leave-btn{padding:.4rem .8rem;border-radius:.4rem;border:none;background:#dc2626;color:#fff;font-size:.75rem;cursor:pointer}
-    .share-link-box{display:flex;gap:.5rem;margin-top:.5rem}
-    .share-link-input{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(139,92,246,.3);border-radius:.4rem;padding:.4rem .6rem;color:#a78bfa;font-size:.7rem;font-family:monospace}
-    .copy-btn{padding:.4rem .8rem;border-radius:.4rem;border:none;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:.7rem;cursor:pointer;font-weight:600}
+    .share-btn{padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(251,191,36,.3);background:transparent;color:#fbbf24;font-size:.75rem;cursor:pointer}
+    .share-btn:hover{background:rgba(251,191,36,.1)}
+    .share-tooltip{position:absolute;top:100%;right:0;margin-top:.5rem;padding:.75rem;background:#18181b;border:1px solid rgba(251,191,36,.3);border-radius:.5rem;z-index:100;min-width:280px}
+    .share-tooltip input{margin-bottom:.5rem;font-size:.7rem;padding:.5rem}
+    .share-tooltip-btn{padding:.4rem .8rem;border-radius:.4rem;border:none;background:linear-gradient(135deg,#fbbf24,#d97706);color:#451a03;font-size:.75rem;cursor:pointer;font-weight:600;width:100%}
     .table-area{position:relative;width:100%;height:calc(100vh - 200px);min-height:400px}
     .felt{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:75%;height:65%;border-radius:50%;background:radial-gradient(ellipse,#065f46,#064e3b 40%,#022c22);border:10px solid #18181b;box-shadow:inset 0 0 80px rgba(0,0,0,.6),0 0 0 4px #09090b,0 0 0 14px #18181b}
     .felt-brand{position:absolute;bottom:15%;left:50%;transform:translateX(-50%);color:#fbbf24;opacity:.15;font-size:1.5rem;font-weight:bold;letter-spacing:.2em}
@@ -77,11 +80,17 @@
     .card.small{width:30px;height:42px;font-size:.7rem}
     .card.red{color:#dc2626}
     .card.black{color:#18181b}
-    .card.hidden{background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;position:relative}
-    .card.hidden::before{content:'♦';color:rgba(255,255,255,.4);font-size:.7rem}
+    .card.hidden{background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;position:relative;display:flex;align-items:center;justify-content:center}
+    .card.hidden::before{content:'♦';color:rgba(255,255,255,.3);font-size:1rem}
+    .card.hidden.small::before{font-size:.7rem}
     .card.empty{background:transparent;border:2px dashed rgba(255,215,0,.2)}
+    .card.dealing{animation:dealCard .4s ease-out forwards}
+    @keyframes dealCard{
+      0%{transform:translate(200px,-100px) rotate(20deg);opacity:0}
+      100%{transform:translate(0,0) rotate(0deg);opacity:1}
+    }
     .seat{position:absolute;width:85px;transform:translate(-50%,-50%);z-index:20}
-    .player-box{border-radius:10px;padding:.4rem;background:linear-gradient(145deg,rgba(39,39,42,.95),rgba(24,24,27,.98));border:2px solid rgba(63,63,70,.5);text-align:center}
+    .player-box{border-radius:10px;padding:.4rem;background:linear-gradient(145deg,rgba(39,39,42,.95),rgba(24,24,27,.98));border:2px solid rgba(63,63,70,.5);text-align:center;position:relative}
     .player-box.active{border-color:#f59e0b;box-shadow:0 0 20px rgba(245,158,11,.4)}
     .player-box.me{border-color:rgba(34,197,94,.5)}
     .player-box.folded{opacity:.3}
@@ -95,28 +104,35 @@
     .badge-sb{bottom:-6px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#22c55e,#16a34a)}
     .badge-bb{bottom:-6px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#f59e0b,#d97706)}
     .badge-allin{top:-4px;right:-4px;background:linear-gradient(135deg,#ef4444,#dc2626);font-size:.3rem}
-    .empty-seat{border:2px dashed rgba(251,191,36,.2);background:rgba(0,0,0,.2);padding:1rem .5rem;border-radius:10px;color:#52525b;font-size:.65rem}
+    .empty-seat{border:2px dashed rgba(251,191,36,.2);background:rgba(0,0,0,.2);padding:1rem .5rem;border-radius:10px;color:#52525b;font-size:.65rem;cursor:pointer;transition:all .2s}
+    .empty-seat:hover{border-color:rgba(251,191,36,.5);color:#fbbf24}
+    .stand-up-btn{position:absolute;top:-8px;left:-8px;width:20px;height:20px;border-radius:50%;background:#dc2626;border:none;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+    .player-box.me:hover .stand-up-btn{opacity:1}
     .deck{position:absolute;top:50%;left:80%;transform:translate(-50%,-50%);z-index:5}
-    .deck-card{position:absolute;width:34px;height:48px;background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;border-radius:4px;display:flex;align-items:center;justify-content:center}
+    .deck-card{position:absolute;width:34px;height:48px;background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:transform .1s}
     .deck-card-inner{width:26px;height:40px;border:1px solid rgba(255,255,255,.3);border-radius:2px;background:repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.1) 2px,rgba(255,255,255,.1) 4px);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:.7rem}
+    .deck.shuffling .deck-card{animation:shuffle .15s ease-in-out infinite alternate}
+    .deck.shuffling .deck-card:nth-child(odd){animation-delay:.075s}
+    @keyframes shuffle{
+      0%{transform:translateX(-3px) rotate(-2deg)}
+      100%{transform:translateX(3px) rotate(2deg)}
+    }
     .actions{position:fixed;bottom:0;left:0;right:0;padding:.75rem 1rem 1.5rem;background:linear-gradient(180deg,transparent,rgba(9,9,11,.98) 30%);z-index:50}
     .action-buttons{display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
     .action-btn{padding:.7rem 1.2rem;border-radius:10px;font-weight:600;cursor:pointer;font-size:.9rem}
     .btn-fold{background:linear-gradient(180deg,#27272a,#18181b);border:1px solid #3f3f46;color:#a1a1aa}
     .btn-check,.btn-call{background:linear-gradient(180deg,#065f46,#064e3b);border:1px solid #065f46;color:#6ee7b7}
     .btn-raise{background:linear-gradient(180deg,#d97706,#b45309);border:1px solid #b45309;color:#fef3c7}
-    .btn-allin{background:linear-gradient(180deg,#dc2626,#991b1b);border:1px solid #991b1b;color:#fecaca;font-weight:700}
     .raise-controls{display:flex;justify-content:center;align-items:center;gap:.5rem;flex-wrap:wrap}
     .raise-btn{width:36px;height:36px;border-radius:50%;background:linear-gradient(180deg,#27272a,#18181b);border:1px solid #3f3f46;color:#fbbf24;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
     .raise-slider{width:140px;accent-color:#d97706}
     .raise-amount{color:#fbbf24;font-family:monospace;font-size:1.1rem;font-weight:700;min-width:70px;text-align:center}
     .preset-btn{padding:.4rem .7rem;border-radius:6px;background:linear-gradient(180deg,#27272a,#18181b);border:1px solid #3f3f46;color:#fbbf24;font-size:.75rem;cursor:pointer;font-weight:600}
-    .waiting-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
-    .room-code{font-size:2.5rem;font-weight:bold;color:#fbbf24;letter-spacing:.3em;margin-bottom:.75rem}
-    .waiting-text{color:#a1a1aa;font-size:.9rem;margin-bottom:1.5rem}
-    .player-list{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-bottom:1.5rem}
-    .player-chip{padding:.4rem .8rem;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:16px;color:#fbbf24;font-size:.8rem}
-    .start-btn{padding:.9rem 2.5rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;color:#fff;font-size:1.1rem;font-weight:bold;cursor:pointer;letter-spacing:.1em}
+    .waiting-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:30;background:rgba(0,0,0,.85);padding:1.5rem 2.5rem;border-radius:1rem;border:1px solid rgba(251,191,36,.2)}
+    .waiting-banner h2{color:#fbbf24;font-size:1.2rem;margin-bottom:.5rem}
+    .waiting-banner p{color:#a1a1aa;font-size:.85rem;margin-bottom:1rem}
+    .waiting-banner .player-count{color:#fbbf24;font-weight:bold}
+    .start-btn{padding:.75rem 2rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:8px;color:#fff;font-size:1rem;font-weight:bold;cursor:pointer}
     .start-btn:disabled{background:#3f3f46;cursor:not-allowed}
     .chat-box{position:fixed;bottom:100px;left:.5rem;width:220px;height:180px;background:linear-gradient(180deg,rgba(9,9,11,.95),rgba(9,9,11,.98));border-radius:10px;border:1px solid rgba(251,191,36,.2);z-index:45;display:flex;flex-direction:column}
     .chat-header{padding:.4rem .6rem;border-bottom:1px solid rgba(251,191,36,.15);font-size:.7rem;color:#fbbf24;font-weight:600}
@@ -195,15 +211,15 @@
 </div>
 <div id="app"></div>
   <script>
-    // Supabase setup
     const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bWlkd3drd3JvY2l4bXJzZ2l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2ODQ1NzgsImV4cCI6MjA4NDI2MDU3OH0.2MdNumOLrErGknOE4SqLzs1ZIs6HOfp2JZpuz5UIhrs';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let currentUser = null;
-    
-    // CHAT: Store input value independently
     let chatInputValue = '';
+    let isShuffling = false;
+    let dealingCards = false;
+    let showShareTooltip = false;
     
     function renderAuthHeader() {
       const header = document.getElementById('authHeader');
@@ -256,7 +272,6 @@
     const BLINDS = [[1,2],[2,4],[5,10],[10,20],[25,50],[50,100],[100,200],[500,1000]];
     const SUIT_SYM = { h:'♥', d:'♦', c:'♣', s:'♠' };
     
-    // Check URL for table code (for direct links to private tables)
     const urlParams = new URLSearchParams(window.location.search);
     const urlTableCode = urlParams.get('table');
     
@@ -286,11 +301,12 @@
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
     
-    function renderCard(card, small=false, hidden=false) {
-      if (!card || hidden || !card.suit) return '<div class="card '+(small?'small':'')+' hidden"></div>';
+    function renderCard(card, small=false, hidden=false, dealing=false) {
+      const dealClass = dealing ? ' dealing' : '';
+      if (!card || hidden || !card.suit) return '<div class="card '+(small?'small':'')+' hidden'+dealClass+'"></div>';
       const color = (card.suit==='h'||card.suit==='d') ? 'red' : 'black';
       const rank = card.rank==='T' ? '10' : card.rank;
-      return '<div class="card '+(small?'small':'')+' '+color+'"><span>'+rank+'</span><span>'+SUIT_SYM[card.suit]+'</span></div>';
+      return '<div class="card '+(small?'small':'')+' '+color+dealClass+'"><span>'+rank+'</span><span>'+SUIT_SYM[card.suit]+'</span></div>';
     }
     
     function getShareLink(code) {
@@ -303,19 +319,22 @@
         const btn = document.getElementById('copyLinkBtn');
         if (btn) {
           btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+          setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
         }
       });
+    }
+    
+    function toggleShareTooltip() {
+      showShareTooltip = !showShareTooltip;
+      render();
     }
     
     function render() {
       const app = document.getElementById('app');
       if (state.screen === 'lobby') app.innerHTML = renderLobby();
-      else if (state.screen === 'waiting') app.innerHTML = renderWaiting();
-      else if (state.screen === 'game') app.innerHTML = renderGame();
+      else if (state.screen === 'game' || state.screen === 'waiting') app.innerHTML = renderGame();
       attachEvents();
       
-      // CHAT: Restore input value after render
       const chatInput = document.getElementById('chatInput');
       if (chatInput && chatInput.value !== chatInputValue) {
         chatInput.value = chatInputValue;
@@ -325,18 +344,11 @@
     function renderLobby() {
       const [sb,bb] = BLINDS[state.blindsIdx];
       
-      // If user came via direct link, show join prompt
       if (state.hasCodeFromUrl && state.tableCode) {
         return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="card-panel" style="max-width:400px"><div class="panel-title"><span>🔒</span> Join Private Table</div><p style="color:#a1a1aa;margin-bottom:1rem;font-size:.9rem">You\'ve been invited to table <span style="color:#a78bfa;font-weight:bold">'+state.tableCode+'</span></p><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinPrivateBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">JOIN PRIVATE TABLE</button><button class="btn" id="backToLobbyBtn" style="margin-top:.5rem;background:transparent;border:1px solid #3f3f46;color:#a1a1aa">Back to Lobby</button></div></div>';
       }
       
       return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="lobby-container"><div class="card-panel"><div class="panel-title"><span>🎮</span> Active Tables <button class="refresh-btn" id="refreshBtn">🔄</button></div><div class="tables-list">'+(state.tables.length===0?'<div class="no-tables">No active tables. Create one!</div>':state.tables.map(t=>'<div class="table-row '+(t.isPrivate?'private':'')+'"><div class="table-info"><div class="table-name">'+(t.isPrivate?'<span class="private-badge">🔒</span>':'')+t.hostName+'\'s Table</div><div class="table-details">'+t.blinds+' blinds • $'+fmt(t.buyIn)+' buy-in'+(t.inProgress?' • In Progress':'')+'</div></div><div class="table-seats">'+Array(t.maxSeats).fill(0).map((_,i)=>'<div class="seat-dot '+(i<t.playerCount?'filled':'')+'"></div>').join('')+'</div>'+(t.isPrivate?'<button class="join-btn private-join" disabled title="Need invite link">Private</button>':'<button class="join-btn" data-code="'+t.code+'" '+(t.playerCount>=t.maxSeats?'disabled':'')+'>'+(t.playerCount>=t.maxSeats?'Full':'Join')+'</button>')+'</div>').join(''))+'</div></div><div class="card-panel"><div class="tabs"><button class="tab '+(state.tab==='create'?'active':'')+'" data-tab="create">Create Table</button><button class="tab '+(state.tab==='join'?'active':'')+'" data-tab="join">Join by Code</button></div><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'">'+(state.tab==='create'?'<div class="toggle-container"><span class="toggle-label '+(state.isPrivate?'':'active')+'">🌐 Public</span><div class="toggle-switch '+(state.isPrivate?'on':'')+'" id="privateToggle"><div class="toggle-knob"></div></div><span class="toggle-label '+(state.isPrivate?'active':'')+'">🔒 Private</span></div>'+(state.isPrivate?'<div class="private-info">Private tables require an invite link to join</div>':'')+'<label>Table Size</label><select id="maxSeats">'+[2,3,4,5,6,7,8,9].map(n=>'<option value="'+n+'" '+(state.maxSeats===n?'selected':'')+'>'+n+' Seats</option>').join('')+'</select><label>Blinds</label><select id="blinds">'+BLINDS.map((b,i)=>'<option value="'+i+'" '+(state.blindsIdx===i?'selected':'')+'>$'+b[0]+' / $'+b[1]+'</option>').join('')+'</select><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="'+(bb*20)+'" max="'+(bb*200)+'" step="'+(bb*10)+'" value="'+state.buyIn+'"><button class="btn btn-primary" id="createBtn" style="'+(state.isPrivate?'background:linear-gradient(135deg,#8b5cf6,#7c3aed)':'')+'">CREATE '+(state.isPrivate?'PRIVATE ':'')+'TABLE</button>':'<label>Table Code</label><input type="text" id="tableCode" placeholder="Enter 6-digit code..." value="'+state.tableCode+'" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:1.3rem"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinBtn">JOIN TABLE</button>')+'</div></div><p class="footer">AllIn27.com</p></div>';
-    }
-    
-    function renderWaiting() {
-      const playerCount = state.seats.filter(s=>s).length;
-      const isPrivateTable = state.gameState?.isPrivate;
-      return '<div class="game-container">'+renderGameTable()+'<div class="waiting-overlay">'+(isPrivateTable?'<p style="color:#a78bfa;margin-bottom:.25rem;font-size:.75rem">🔒 PRIVATE TABLE</p>':'')+'<p style="color:#a1a1aa;margin-bottom:.4rem;font-size:.85rem">'+(isPrivateTable?'Share this link with friends:':'Table Code:')+'</p>'+(isPrivateTable?'<div class="share-link-box" style="margin-bottom:.75rem;max-width:350px"><input class="share-link-input" id="shareLinkInput" value="'+getShareLink(state.tableCode)+'" readonly><button class="copy-btn" id="copyLinkBtn" onclick="copyShareLink()">Copy</button></div>':'<div class="room-code">'+state.tableCode+'</div>')+'<p class="waiting-text">Waiting for players... ('+playerCount+'/'+state.maxSeats+')</p><div class="player-list">'+state.seats.map((s,i)=>s?'<div class="player-chip">'+s.name+'</div>':'').join('')+'</div>'+(state.isHost?'<button class="start-btn" id="startBtn" '+(playerCount<2?'disabled':'')+'>'+(playerCount<2?'NEED 2+ PLAYERS':'START GAME')+'</button>':'<p style="color:#71717a;font-size:.85rem">Waiting for host to start...</p>')+'</div></div>';
     }
     
     function renderGameTable() {
@@ -345,30 +357,47 @@
       const positions = SEAT_POSITIONS[gs.maxSeats] || SEAT_POSITIONS[6];
       const potChips = Math.min(10, Math.max(2, Math.ceil(gs.pot / gs.bb / 2)));
       const isPrivateTable = gs.isPrivate;
-      let html = '<div class="header"><span class="header-logo">♠ AllIn27</span><span class="header-info">'+(isPrivateTable?'<span class="private-indicator">🔒 Private</span> | ':'')+'Code: <span>'+state.tableCode+'</span> | Blinds: <span>$'+gs.sb+'/$'+gs.bb+'</span> | Hand <span>#'+(gs.handNum||0)+'</span></span><button class="leave-btn" id="leaveBtn">Leave</button></div><div class="table-area"><div class="felt"><div class="felt-brand">ALLIN27</div></div>';
+      const isWaiting = !gs.handInProgress && gs.phase === 'waiting';
+      const playerCount = gs.players.filter(p=>p&&!p.sittingOut).length;
+      
+      let html = '<div class="header"><span class="header-logo">♠ AllIn27</span><span class="header-info">'+(isPrivateTable?'<span class="private-indicator">🔒</span> | ':'')+'<span>'+state.tableCode+'</span> | <span>$'+gs.sb+'/$'+gs.bb+'</span> | Hand <span>#'+(gs.handNum||0)+'</span></span><div class="header-buttons" style="position:relative"><button class="share-btn" id="shareBtn">📤 Share</button>'+(showShareTooltip?'<div class="share-tooltip"><input type="text" value="'+getShareLink(state.tableCode)+'" readonly onclick="this.select()"><button class="share-tooltip-btn" id="copyLinkBtn" onclick="copyShareLink()">Copy Link</button></div>':'')+'<button class="leave-btn" id="leaveBtn">Leave</button></div></div>';
+      
+      html += '<div class="table-area"><div class="felt"><div class="felt-brand">ALLIN27</div></div>';
+      
       if (gs.pot > 0) html += '<div class="pot-area"><div style="display:flex;gap:3px"><div class="chip-stack">'+Array(Math.ceil(potChips/3)).fill('<div class="chip chip-red"></div>').join('')+'</div><div class="chip-stack">'+Array(Math.ceil(potChips/4)).fill('<div class="chip chip-black"></div>').join('')+'</div><div class="chip-stack">'+Array(Math.ceil(potChips/2)).fill('<div class="chip chip-gold"></div>').join('')+'</div></div><div class="pot-amount">$'+fmt(gs.pot)+'</div></div>';
-      html += '<div class="community-cards">'+[0,1,2,3,4].map(i=>gs.community[i]?renderCard(gs.community[i]):'<div class="card empty"></div>').join('')+'</div>';
-      html += '<div class="deck">'+[0,1,2,3,4,5].map(i=>'<div class="deck-card" style="top:'+(-i)+'px;left:'+(-i*0.5)+'px"><div class="deck-card-inner">♦</div></div>').join('')+'</div>';
+      
+      html += '<div class="community-cards">'+[0,1,2,3,4].map(i=>gs.community[i]?renderCard(gs.community[i],false,false,dealingCards):'<div class="card empty"></div>').join('')+'</div>';
+      
+      html += '<div class="deck '+(isShuffling?'shuffling':'')+'">'+[0,1,2,3,4,5].map(i=>'<div class="deck-card" style="top:'+(-i)+'px;left:'+(-i*0.5)+'px"><div class="deck-card-inner">♦</div></div>').join('')+'</div>';
+      
       gs.players.forEach((p,i) => {
         const pos = positions[i];
         if (!pos) return;
-        if (!p) { html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat">Empty</div></div>'; return; }
+        if (!p) { 
+          html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat" data-seat="'+i+'">Sit Here</div></div>'; 
+          return; 
+        }
         const isActive = gs.currentIdx === i && gs.handInProgress;
         const isMe = p.isMe;
-        // FIXED: Show cards if it's me, OR if at showdown and cards have suit (means server sent them)
         const showCards = isMe || (gs.phase === 'showdown' && p.cards && p.cards.length > 0 && p.cards[0].suit);
         html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%">';
         if (gs.bets[i] > 0) html += '<div class="player-bet">$'+fmt(gs.bets[i])+'</div>';
         html += '<div class="player-box '+(isActive?'active':'')+' '+(isMe?'me':'')+' '+(p.folded?'folded':'')+' '+(p.sittingOut?'sitting-out':'')+'">';
+        if (isMe) html += '<button class="stand-up-btn" id="standUpBtn" title="Leave Seat">✕</button>';
         if (i === gs.dealerIdx) html += '<div class="badge badge-dealer">D</div>';
         if (p.allIn) html += '<div class="badge badge-allin">ALL IN</div>';
-        if (p.cards && p.cards.length) html += '<div class="player-cards">'+p.cards.map(c=>renderCard(c,true,!showCards)).join('')+'</div>';
+        if (p.cards && p.cards.length) html += '<div class="player-cards">'+p.cards.map(c=>renderCard(c,true,!showCards,dealingCards&&isMe)).join('')+'</div>';
         html += '<div class="player-name">'+(isMe?'You':p.name)+(p.sittingOut?' (out)':'')+'</div>';
         html += '<div class="player-chips">$'+fmt(p.chips)+'</div>';
         if (i === gs.sbIdx && gs.handInProgress) html += '<div class="badge badge-sb">SB</div>';
         if (i === gs.bbIdx && gs.handInProgress) html += '<div class="badge badge-bb">BB</div>';
         html += '</div></div>';
       });
+      
+      if (isWaiting) {
+        html += '<div class="waiting-banner"><h2>Waiting for Players</h2><p><span class="player-count">'+playerCount+'/'+gs.maxSeats+'</span> players at table</p>'+(state.isHost?'<button class="start-btn" id="startBtn" '+(playerCount<2?'disabled':'')+'>'+(playerCount<2?'Need 2+ Players':'Start Game')+'</button>':'<p style="font-size:.75rem;color:#71717a">Waiting for host to start...</p>')+'</div>';
+      }
+      
       html += '</div>';
       return html;
     }
@@ -381,15 +410,15 @@
       const toCall = myPlayer ? gs.currentBet-(gs.bets[myPlayer.seatIdx]||0) : 0;
       const minRaise = gs.currentBet + (gs.bb||2);
       const maxRaise = myPlayer ? myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0) : 0;
+      
       let html = '<div class="game-container">'+renderGameTable();
       
-      // CHAT: Separate messages div from input - input uses stored value
       html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('')+'</div><div class="chat-input-container"><input type="text" id="chatInput" placeholder="Type a message..." value="'+chatInputValue.replace(/"/g, '&quot;')+'"></div></div>';
       
       html += '<div class="action-log"><div class="log-header">📋 Action Log</div><div class="log-messages">'+state.actionLog.map(m=>'<div class="log-msg '+m.type+'">'+m.text+'</div>').join('')+'</div></div>';
-      if (state.sittingOut) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
       
-      // Show "Show Cards" button at showdown if player can show - NOW WITH GOLD/BLACK STYLING
+      if (state.sittingOut && myPlayer) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
+      
       if (gs.phase === 'showdown' && myPlayer && myPlayer.canShow) {
         html += '<button class="sit-in-btn btn-show-cards" id="showCardsBtn">Show Cards</button>';
       }
@@ -398,10 +427,11 @@
         html += '<div class="actions"><div class="action-buttons"><button class="action-btn btn-fold" data-action="fold">Fold</button>';
         if (toCall===0) html += '<button class="action-btn btn-check" data-action="check">Check</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':(gs.currentBet>0?'Raise':'Bet'))+'</button>';
         else html += '<button class="action-btn btn-call" data-action="call">Call $'+fmt(Math.min(toCall,myPlayer.chips))+'</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':'Raise')+'</button>';
-        html += '<button class="action-btn btn-allin" data-action="allin">All In</button></div>';
-        if (state.showRaise) html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt||minRaise)+'</span></div><div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+(state.raiseAmt||minRaise)+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½ Pot</button><button class="preset-btn" data-preset="1">Pot</button><button class="action-btn btn-raise" data-action="raise" style="padding:.5rem 1rem">'+(gs.currentBet>0?'Raise':'Bet')+'</button></div>';
+        html += '</div>';
+        if (state.showRaise) html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt||minRaise)+'</span></div><div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+(state.raiseAmt||minRaise)+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½ Pot</button><button class="preset-btn" data-preset="0.75">¾ Pot</button><button class="preset-btn" data-preset="1">Pot</button><button class="action-btn btn-raise" data-action="raise" style="padding:.5rem 1rem">'+(gs.currentBet>0?'Raise':'Bet')+'</button></div>';
         html += '</div>';
       }
+      
       if (state.winner) html += '<div class="winner-overlay"><div class="winner-box"><div class="winner-title">'+state.winner.names.join(', ')+' Wins!</div><div class="winner-hand">'+state.winner.hand+'</div><div class="winner-amount">+$'+fmt(state.winner.amount)+'</div></div></div>';
       html += '</div>';
       return html;
@@ -411,7 +441,6 @@
       document.querySelectorAll('.tab').forEach(tab => { tab.onclick = () => { state.tab = tab.dataset.tab; playSound('click'); render(); }; });
       const refreshBtn = document.getElementById('refreshBtn'); if (refreshBtn) refreshBtn.onclick = () => { socket.emit('getTables'); playSound('click'); };
       
-      // Join public table from lobby list
       document.querySelectorAll('.join-btn[data-code]').forEach(btn => { 
         btn.onclick = () => { 
           if (!state.name.trim()) { alert('Enter your name first'); return; } 
@@ -423,7 +452,6 @@
         }; 
       });
       
-      // Join private table from URL
       const joinPrivateBtn = document.getElementById('joinPrivateBtn'); 
       if (joinPrivateBtn) joinPrivateBtn.onclick = () => { 
         if (!state.name.trim()) { alert('Enter your name'); return; } 
@@ -432,7 +460,6 @@
         playSound('click'); 
       };
       
-      // Back to lobby from private join screen
       const backToLobbyBtn = document.getElementById('backToLobbyBtn');
       if (backToLobbyBtn) backToLobbyBtn.onclick = () => {
         state.hasCodeFromUrl = false;
@@ -447,11 +474,9 @@
       const blindsSelect = document.getElementById('blinds'); if (blindsSelect) blindsSelect.onchange = e => { state.blindsIdx = parseInt(e.target.value); const [sb,bb] = BLINDS[state.blindsIdx]; state.buyIn = bb*100; render(); };
       const buyInSlider = document.getElementById('buyIn'); if (buyInSlider) buyInSlider.oninput = e => { state.buyIn = parseInt(e.target.value); render(); };
       
-      // Private toggle
       const privateToggle = document.getElementById('privateToggle');
       if (privateToggle) privateToggle.onclick = () => { state.isPrivate = !state.isPrivate; playSound('click'); render(); };
       
-      // Create table
       const createBtn = document.getElementById('createBtn'); 
       if (createBtn) createBtn.onclick = () => { 
         if (!state.name.trim()) { alert('Enter your name'); return; } 
@@ -466,7 +491,6 @@
         playSound('click'); 
       };
       
-      // Join by code
       const joinBtn = document.getElementById('joinBtn'); 
       if (joinBtn) joinBtn.onclick = () => { 
         if (!state.name.trim()) { alert('Enter your name'); return; } 
@@ -477,9 +501,16 @@
       };
       
       const startBtn = document.getElementById('startBtn'); if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
-      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; chatInputValue=''; socket.emit('getTables'); render(); };
+      const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; chatInputValue=''; showShareTooltip=false; socket.emit('getTables'); render(); };
+      const shareBtn = document.getElementById('shareBtn'); if (shareBtn) shareBtn.onclick = () => { toggleShareTooltip(); };
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
       const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
+      const standUpBtn = document.getElementById('standUpBtn'); if (standUpBtn) standUpBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; chatInputValue=''; showShareTooltip=false; socket.emit('getTables'); render(); };
+      
+      document.querySelectorAll('.empty-seat[data-seat]').forEach(seat => {
+        seat.onclick = () => { playSound('click'); };
+      });
+      
       document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const gs=state.gameState; socket.emit('action',{action:'raise',amount:state.raiseAmt||(gs.currentBet+gs.bb)}); state.showRaise=false; } else { socket.emit('action',{action}); } playSound(action); }; });
       const raiseToggle = document.getElementById('raiseToggle'); if (raiseToggle) raiseToggle.onclick = () => { state.showRaise=!state.showRaise; if(state.showRaise){const gs=state.gameState;state.raiseAmt=gs.currentBet+gs.bb;} playSound('click'); render(); };
       const raiseSlider = document.getElementById('raiseSlider'); if (raiseSlider) raiseSlider.oninput = e => { state.raiseAmt=parseInt(e.target.value); render(); };
@@ -487,7 +518,6 @@
       const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
       document.querySelectorAll('[data-preset]').forEach(btn => { btn.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; const mult=parseFloat(btn.dataset.preset); state.raiseAmt=Math.min(maxRaise,Math.max(gs.currentBet+gs.bb,Math.floor(gs.pot*mult))); playSound('click'); render(); }; });
       
-      // CHAT: Track input value independently
       const chatInput = document.getElementById('chatInput'); 
       if (chatInput) {
         chatInput.oninput = e => { chatInputValue = e.target.value; };
@@ -499,27 +529,52 @@
           } 
         };
       }
+      
+      document.addEventListener('click', (e) => {
+        if (showShareTooltip && !e.target.closest('.header-buttons')) {
+          showShareTooltip = false;
+          render();
+        }
+      });
     }
     
     socket.on('tableList', tables => { state.tables=tables; if(state.screen==='lobby')render(); });
-    socket.on('tableCreated', ({code,seatIdx,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.isHost=true; state.screen='waiting'; state.sittingOut=false; if(state.gameState) state.gameState.isPrivate=isPrivate; render(); });
-    socket.on('joinedTable', ({code,seatIdx,sittingOut,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.sittingOut=sittingOut; state.screen='waiting'; state.hasCodeFromUrl=false; if(state.gameState) state.gameState.isPrivate=isPrivate; render(); });
+    socket.on('tableCreated', ({code,seatIdx,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.isHost=true; state.screen='game'; state.sittingOut=false; render(); });
+    socket.on('joinedTable', ({code,seatIdx,sittingOut,isPrivate}) => { state.tableCode=code; state.seatIdx=seatIdx; state.sittingOut=sittingOut; state.screen='game'; state.hasCodeFromUrl=false; render(); });
     socket.on('tableUpdate', ({seats,gameState,phase,isPrivate,code}) => { state.seats=seats; state.phase=phase; if(gameState){state.gameState=gameState;state.maxSeats=gameState.maxSeats;} if(isPrivate!==undefined && state.gameState) state.gameState.isPrivate=isPrivate; if(code) state.tableCode=code; render(); });
     socket.on('playerJoined', ({name,seatIdx}) => { state.actionLog.push({text:name+' joined',type:'system'}); playSound('click'); render(); });
     socket.on('playerLeft', ({name,seatIdx}) => { state.actionLog.push({text:name+' left',type:'system'}); render(); });
     socket.on('playerSatIn', ({name,seatIdx}) => { state.actionLog.push({text:name+' is now active',type:'system'}); render(); });
     socket.on('playerShowedCards', ({name,seatIdx}) => { state.actionLog.push({text:name+' shows their cards',type:'system'}); render(); });
-    socket.on('handStarted', ({handNum}) => { state.screen='game'; state.winner=null; state.actionLog.push({text:'--- Hand #'+handNum+' ---',type:'system'}); playSound('deal'); render(); });
+    
+    socket.on('handStarted', ({handNum}) => { 
+      state.screen='game'; 
+      state.winner=null; 
+      state.actionLog.push({text:'--- Hand #'+handNum+' ---',type:'system'}); 
+      
+      isShuffling = true;
+      render();
+      setTimeout(() => {
+        isShuffling = false;
+        dealingCards = true;
+        render();
+        setTimeout(() => {
+          dealingCards = false;
+          render();
+        }, 500);
+      }, 800);
+      
+      playSound('deal'); 
+    });
+    
     socket.on('gameUpdate', gameState => { state.gameState=gameState; state.screen='game'; render(); });
     socket.on('actionMade', ({seatIdx,name,action,amount}) => { let text='',type=action; if(action==='fold')text=name+' folds'; else if(action==='check')text=name+' checks'; else if(action==='call')text=name+' calls'; else if(action==='raise')text=name+' raises to $'+fmt(amount); else if(action==='allin')text=name+' ALL IN'; state.actionLog.push({text,type}); render(); });
     socket.on('sound', ({type}) => { playSound(type); });
     socket.on('phaseChange', ({phase}) => { state.actionLog.push({text:'--- '+phase.toUpperCase()+' ---',type:'system'}); });
     socket.on('handComplete', ({winners,hand,amount}) => { state.winner={names:winners.map(w=>w.name),hand,amount}; state.actionLog.push({text:winners.map(w=>w.name).join(', ')+' wins $'+fmt(amount)+' with '+hand,type:'win'}); playSound('win'); render(); setTimeout(()=>{state.winner=null;render();},3500); });
     
-    // CHAT: Only update messages, don't touch input
     socket.on('chatMessage', ({name,message}) => { 
       state.chatMessages.push({name,message}); 
-      // Only update the messages div, not the whole thing
       const chatEl = document.getElementById('chatMessages'); 
       if (chatEl) {
         chatEl.innerHTML = state.chatMessages.map(m=>'<div class="chat-msg"><span class="name">'+m.name+':</span> '+m.message+'</div>').join('');
