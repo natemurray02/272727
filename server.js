@@ -923,7 +923,6 @@ io.on('connection', (socket) => {
       socket.emit('seatTaken', { seatIdx });
       io.to(table.code).emit('playerJoined', { name: player.name, seatIdx });
     }
-    }
     
     // Send updates
     table.seats.forEach((p, i) => {
