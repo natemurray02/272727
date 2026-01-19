@@ -211,8 +211,9 @@
     
     let currentUser = null;
     
-    // CHAT: Store input value independently
+    // CHAT: Track input value and focus state independently
     let chatInputValue = '';
+    let chatInputFocused = false;
     
     function renderAuthHeader() {
       const header = document.getElementById('authHeader');
@@ -545,10 +546,12 @@
       const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
       document.querySelectorAll('[data-preset]').forEach(btn => { btn.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; const mult=parseFloat(btn.dataset.preset); state.raiseAmt=Math.min(maxRaise,Math.max(gs.currentBet+gs.bb,Math.floor(gs.pot*mult))); playSound('click'); render(); }; });
       
-      // CHAT: Track input value independently
+      // CHAT: Track input value independently and restore focus
       const chatInput = document.getElementById('chatInput'); 
       if (chatInput) {
         chatInput.oninput = e => { chatInputValue = e.target.value; };
+        chatInput.onfocus = () => { chatInputFocused = true; };
+        chatInput.onblur = () => { chatInputFocused = false; };
         chatInput.onkeydown = e => { 
           if (e.key==='Enter' && chatInputValue.trim()) { 
             socket.emit('chat',{message: chatInputValue}); 
@@ -556,6 +559,12 @@
             chatInput.value = '';
           } 
         };
+        // Restore focus if it was focused before render
+        if (chatInputFocused) {
+          chatInput.focus();
+          // Put cursor at end
+          chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+        }
       }
     }
     
