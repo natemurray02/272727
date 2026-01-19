@@ -77,8 +77,9 @@
     .card.small{width:30px;height:42px;font-size:.7rem}
     .card.red{color:#dc2626}
     .card.black{color:#18181b}
-    .card.hidden{background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;position:relative}
-    .card.hidden::before{content:'♦';color:rgba(255,255,255,.4);font-size:.7rem}
+    .card.hidden{background:linear-gradient(145deg,#dc2626,#991b1b);border:2px solid #fefefe;position:relative;display:flex;align-items:center;justify-content:center}
+    .card.hidden::before{content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,.3);border-radius:3px;background:repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.1) 2px,rgba(255,255,255,.1) 4px)}
+    .card.hidden::after{content:'♦';color:rgba(255,255,255,.5);font-size:.8rem;position:absolute}
     .card.empty{background:transparent;border:2px dashed rgba(255,215,0,.2)}
     .seat{position:absolute;width:85px;transform:translate(-50%,-50%);z-index:20}
     .player-box{border-radius:10px;padding:.4rem;background:linear-gradient(145deg,rgba(39,39,42,.95),rgba(24,24,27,.98));border:2px solid rgba(63,63,70,.5);text-align:center}
