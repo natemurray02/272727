@@ -1166,7 +1166,37 @@ io.on('connection', (socket) => {
     if (!table) return;
     const player = table.seats[socket.seatIdx];
     if (!player) return;
+    
+    // Store message with reactions
+    if (!table.chatMessages) table.chatMessages = [];
+    table.chatMessages.push({ name: player.name, message, reactions: {} });
+    
     io.to(table.code).emit('chatMessage', { name: player.name, message });
+  });
+  
+  socket.on('chatReaction', ({ msgIdx, emoji }) => {
+    const table = tables.get(socket.tableCode);
+    if (!table || !table.chatMessages || !table.chatMessages[msgIdx]) return;
+    
+    const player = table.seats[socket.seatIdx] || { name: socket.playerName || 'Spectator' };
+    const msg = table.chatMessages[msgIdx];
+    
+    if (!msg.reactions) msg.reactions = {};
+    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+    
+    const userIdx = msg.reactions[emoji].indexOf(player.name);
+    if (userIdx === -1) {
+      // Add reaction
+      msg.reactions[emoji].push(player.name);
+    } else {
+      // Remove reaction
+      msg.reactions[emoji].splice(userIdx, 1);
+      if (msg.reactions[emoji].length === 0) {
+        delete msg.reactions[emoji];
+      }
+    }
+    
+    io.to(table.code).emit('chatReactionUpdate', { msgIdx, reactions: msg.reactions });
   });
   
   socket.on('leaveTable', () => {
