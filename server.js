@@ -182,6 +182,9 @@ function startHand(table) {
       p.folded = false;
       p.allIn = false;
       p.sittingOut = p.sittingOut || false;
+      p.wentToShowdown = false;  // Reset showdown flag
+      p.showCards = false;       // Reset show cards flag
+      p.voluntaryShow = false;   // Reset voluntary show flag
     }
   });
   
@@ -287,15 +290,20 @@ function showdown(table) {
   table.handInProgress = false;
   
   const active = getActivePlayers(table);
+  
+  // If everyone folded to one player, they win without showing
   if (active.length === 1) {
     active[0].chips += gs.pot;
-    return { winners: [active[0]], hand: 'Everyone folded', amount: gs.pot };
+    // Don't mark showCards - winner doesn't have to show
+    return { winners: [active[0]], hand: 'Everyone folded', amount: gs.pot, noShow: true };
   }
   
+  // Multiple players went to showdown - evaluate hands
   let bestHand = { rank: 0, value: 0 };
   active.forEach(p => {
     const allCards = [...p.cards, ...gs.community];
     p.handResult = evaluateHand(allCards);
+    p.wentToShowdown = true;  // Mark that this player went to showdown
     if (p.handResult.rank > bestHand.rank || 
         (p.handResult.rank === bestHand.rank && p.handResult.value > bestHand.value)) {
       bestHand = p.handResult;
@@ -305,6 +313,9 @@ function showdown(table) {
   const winners = active.filter(p => 
     p.handResult.rank === bestHand.rank && p.handResult.value === bestHand.value
   );
+  
+  // Mark winners to show their cards
+  winners.forEach(w => w.showCards = true);
   
   const share = Math.floor(gs.pot / winners.length);
   winners.forEach(w => w.chips += share);
@@ -406,7 +417,14 @@ function getPublicGameState(table, forPlayerId = null) {
   const players = gs.players.map((p, i) => {
     if (!p) return null;
     const isMe = p.id === forPlayerId;
+    
+    // Determine if this player's cards should be visible
+    // Cards are visible if:
+    // 1. It's the player's own cards (isMe)
+    // 2. Player went to showdown AND (is winner OR chose to show)
     const isShowdown = gs.phase === 'showdown';
+    const shouldShowCards = isMe || (isShowdown && p.wentToShowdown && (p.showCards || p.voluntaryShow));
+    
     return {
       id: p.id,
       name: p.name,
@@ -414,9 +432,11 @@ function getPublicGameState(table, forPlayerId = null) {
       folded: p.folded,
       allIn: p.allIn,
       sittingOut: p.sittingOut,
-      cards: (isMe || isShowdown) ? p.cards : (p.cards?.length ? [{}, {}] : []),
+      cards: shouldShowCards ? p.cards : (p.cards?.length ? [{}, {}] : []),
       seatIdx: i,
-      isMe
+      isMe,
+      wentToShowdown: p.wentToShowdown || false,
+      canShow: isMe && isShowdown && !p.showCards && !p.voluntaryShow  // Can player choose to show?
     };
   });
   
@@ -599,6 +619,26 @@ io.on('connection', (socket) => {
           });
         }
       });
+    }
+  });
+  
+  // Voluntary show cards at showdown
+  socket.on('showCards', () => {
+    const table = tables.get(socket.tableCode);
+    if (!table) return;
+    
+    const player = table.gameState.players[socket.seatIdx];
+    if (player && table.gameState.phase === 'showdown') {
+      player.voluntaryShow = true;
+      
+      // Send updated game state to all players
+      table.seats.forEach((p, i) => {
+        if (p) {
+          io.to(p.socketId).emit('gameUpdate', getPublicGameState(table, p.id));
+        }
+      });
+      
+      io.to(table.code).emit('playerShowedCards', { name: player.name, seatIdx: socket.seatIdx });
     }
   });
   
