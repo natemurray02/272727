@@ -692,6 +692,7 @@ io.on('connection', (socket) => {
     socket.join(table.code);
     socket.tableCode = table.code;
     socket.seatIdx = 0;
+    socket.playerName = name;
     
     socket.emit('tableCreated', { 
       code: table.code, 
@@ -747,6 +748,7 @@ io.on('connection', (socket) => {
     socket.join(code);
     socket.tableCode = code;
     socket.seatIdx = seatIdx;
+    socket.playerName = name;
     
     socket.emit('joinedTable', { 
       code, 
@@ -821,6 +823,123 @@ io.on('connection', (socket) => {
         cards: formatCards(player.cards)
       });
     }
+  });
+  
+  socket.on('leaveSeat', () => {
+    const table = tables.get(socket.tableCode);
+    if (!table) return;
+    
+    const seatIdx = socket.seatIdx;
+    if (seatIdx === undefined || !table.seats[seatIdx]) return;
+    
+    const player = table.seats[seatIdx];
+    
+    // If hand in progress, fold them first
+    if (table.handInProgress && table.gameState.players[seatIdx] && !table.gameState.players[seatIdx].folded) {
+      table.gameState.players[seatIdx].folded = true;
+    }
+    
+    // Remove from seat but keep in room as spectator
+    table.seats[seatIdx] = null;
+    table.gameState.players[seatIdx] = null;
+    socket.seatIdx = undefined;
+    
+    socket.emit('leftSeat');
+    io.to(table.code).emit('playerLeft', { name: player.name, seatIdx });
+    
+    // Send updates to all players
+    table.seats.forEach((p, i) => {
+      if (p) {
+        io.to(p.socketId).emit('tableUpdate', {
+          seats: table.seats.map(pl => pl ? { name: pl.name, chips: pl.chips, id: pl.id, sittingOut: pl.sittingOut } : null),
+          gameState: getPublicGameState(table, p.id),
+          phase: table.phase,
+          isPrivate: table.isPrivate,
+          code: table.code
+        });
+      }
+    });
+    // Also send to spectator
+    socket.emit('tableUpdate', {
+      seats: table.seats.map(pl => pl ? { name: pl.name, chips: pl.chips, id: pl.id, sittingOut: pl.sittingOut } : null),
+      gameState: getPublicGameState(table, null),
+      phase: table.phase,
+      isPrivate: table.isPrivate,
+      code: table.code
+    });
+    
+    broadcastTableList();
+  });
+  
+  socket.on('takeSeat', ({ seatIdx, buyIn, name }) => {
+    const table = tables.get(socket.tableCode);
+    if (!table) return;
+    
+    // Check if seat is available
+    if (table.seats[seatIdx] !== null) {
+      socket.emit('error', { message: 'Seat is taken' });
+      return;
+    }
+    
+    // If player is already seated, move them
+    if (socket.seatIdx !== undefined && table.seats[socket.seatIdx]) {
+      const oldSeat = socket.seatIdx;
+      const player = table.seats[oldSeat];
+      
+      // Can't move during active hand if you're in it
+      if (table.handInProgress && table.gameState.players[oldSeat] && !table.gameState.players[oldSeat].folded) {
+        socket.emit('error', { message: 'Cannot move seats during active hand' });
+        return;
+      }
+      
+      // Move player to new seat
+      table.seats[oldSeat] = null;
+      table.gameState.players[oldSeat] = null;
+      table.seats[seatIdx] = player;
+      table.gameState.players[seatIdx] = player;
+      socket.seatIdx = seatIdx;
+      
+      socket.emit('seatTaken', { seatIdx });
+      io.to(table.code).emit('playerMoved', { name: player.name, from: oldSeat, to: seatIdx });
+    } else {
+      // New player taking seat (spectator sitting down)
+      const playerName = name || socket.playerName || 'Player';
+      const player = {
+        id: socket.id,
+        name: playerName,
+        chips: buyIn || table.defaultBuyIn,
+        cards: [],
+        folded: false,
+        allIn: false,
+        sittingOut: table.handInProgress,
+        socketId: socket.id
+      };
+      
+      table.seats[seatIdx] = player;
+      table.gameState.players[seatIdx] = player;
+      socket.seatIdx = seatIdx;
+      socket.playerName = playerName;
+      
+      socket.emit('seatTaken', { seatIdx });
+      io.to(table.code).emit('playerJoined', { name: player.name, seatIdx });
+    }
+    }
+    
+    // Send updates
+    table.seats.forEach((p, i) => {
+      if (p) {
+        io.to(p.socketId).emit('tableUpdate', {
+          seats: table.seats.map(pl => pl ? { name: pl.name, chips: pl.chips, id: pl.id, sittingOut: pl.sittingOut } : null),
+          gameState: getPublicGameState(table, p.id),
+          phase: table.phase,
+          isPrivate: table.isPrivate,
+          code: table.code
+        });
+      }
+    });
+    
+    broadcastTableList();
+    tryAutoStartGame(table);
   });
   
   socket.on('startGame', () => {
