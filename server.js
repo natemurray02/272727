@@ -160,12 +160,12 @@ function getActingPlayers(table) {
   return table.gameState.players.filter(p => p && !p.folded && !p.allIn && p.chips > 0);
 }
 
-// NEW: Calculate side pots from player contributions
+// Calculate side pots from player contributions
 function calculateSidePots(table) {
   const gs = table.gameState;
   const pots = [];
   
-  // Get all players who contributed (not folded or have contributions)
+  // Get all players who contributed
   const contributors = [];
   gs.players.forEach((p, i) => {
     if (p && gs.totalContributions[i] > 0) {
@@ -182,7 +182,6 @@ function calculateSidePots(table) {
   contributors.sort((a, b) => a.contribution - b.contribution);
   
   let processedAmount = 0;
-  
   for (let i = 0; i < contributors.length; i++) {
     const currentLevel = contributors[i].contribution;
     if (currentLevel <= processedAmount) continue;
@@ -202,12 +201,8 @@ function calculateSidePots(table) {
     }
     
     if (potAmount > 0 && eligible.length > 0) {
-      pots.push({
-        amount: potAmount,
-        eligible: eligible
-      });
+      pots.push({ amount: potAmount, eligible: eligible });
     }
-    
     processedAmount = currentLevel;
   }
   
@@ -219,14 +214,14 @@ function startHand(table) {
   gs.handNum++;
   gs.deck = shuffle(createDeck());
   gs.community = [];
-  gs.pot = 0;  // Main pot (chips that have been collected)
+  gs.pot = 0;
   gs.currentBet = 0;
   gs.minRaise = table.bb;
-  gs.bets = Array(table.maxSeats).fill(0);  // Current round bets (in front of players)
-  gs.totalContributions = Array(table.maxSeats).fill(0);  // Total contributed this hand
+  gs.bets = Array(table.maxSeats).fill(0);
+  gs.totalContributions = Array(table.maxSeats).fill(0);
   gs.acted = new Set();
   gs.phase = 'preflop';
-  gs.sidePots = [];  // Will be calculated at showdown
+  gs.sidePots = [];
   table.handInProgress = true;
   
   // Reset players
@@ -243,7 +238,10 @@ function startHand(table) {
   });
   
   // Find active players (not sitting out, has chips)
-  const activeSeatIndices = gs.players.map((p, i) => (p && !p.sittingOut && p.chips > 0) ? i : -1).filter(i => i >= 0);
+  const activeSeatIndices = gs.players
+    .map((p, i) => (p && !p.sittingOut && p.chips > 0) ? i : -1)
+    .filter(i => i >= 0);
+  
   if (activeSeatIndices.length < 2) {
     table.handInProgress = false;
     return false;
@@ -267,15 +265,20 @@ function startHand(table) {
     bbIdx = activeSeatIndices.find(i => i !== dealerIdx);
   } else {
     sbIdx = dealerIdx;
-    do { sbIdx = (sbIdx + 1) % table.maxSeats; } while (!gs.players[sbIdx] || gs.players[sbIdx].sittingOut);
+    do {
+      sbIdx = (sbIdx + 1) % table.maxSeats;
+    } while (!gs.players[sbIdx] || gs.players[sbIdx].sittingOut);
+    
     bbIdx = sbIdx;
-    do { bbIdx = (bbIdx + 1) % table.maxSeats; } while (!gs.players[bbIdx] || gs.players[bbIdx].sittingOut);
+    do {
+      bbIdx = (bbIdx + 1) % table.maxSeats;
+    } while (!gs.players[bbIdx] || gs.players[bbIdx].sittingOut);
   }
   
   gs.sbIdx = sbIdx;
   gs.bbIdx = bbIdx;
   
-  // Post blinds - chips go in front of player, not to pot yet
+  // Post blinds
   const sbAmt = Math.min(gs.players[sbIdx].chips, table.sb);
   gs.players[sbIdx].chips -= sbAmt;
   gs.bets[sbIdx] = sbAmt;
@@ -299,13 +302,15 @@ function startHand(table) {
     gs.currentIdx = sbIdx;
   } else {
     gs.currentIdx = bbIdx;
-    do { gs.currentIdx = (gs.currentIdx + 1) % table.maxSeats; } while (!gs.players[gs.currentIdx] || gs.players[gs.currentIdx].sittingOut);
+    do {
+      gs.currentIdx = (gs.currentIdx + 1) % table.maxSeats;
+    } while (!gs.players[gs.currentIdx] || gs.players[gs.currentIdx].sittingOut);
   }
   
   return true;
 }
 
-// NEW: Collect bets into pot (called when betting round ends)
+// Collect bets into pot (called when betting round ends)
 function collectBets(table) {
   const gs = table.gameState;
   let collected = 0;
@@ -350,8 +355,8 @@ function advancePhase(table) {
     idx = (idx + 1) % table.maxSeats;
     tries++;
   } while ((!gs.players[idx] || gs.players[idx].folded || gs.players[idx].allIn || gs.players[idx].sittingOut) && tries < table.maxSeats);
-  gs.currentIdx = idx;
   
+  gs.currentIdx = idx;
   return 'continue';
 }
 
@@ -370,9 +375,9 @@ function showdown(table) {
     const winner = active[0];
     const winnerIdx = gs.players.indexOf(winner);
     winner.chips += gs.pot;
-    return { 
-      winners: [{ player: winner, amount: gs.pot }], 
-      hand: 'Everyone folded', 
+    return {
+      winners: [{ player: winner, amount: gs.pot }],
+      hand: 'Everyone folded',
       noShow: true,
       potResults: [{ amount: gs.pot, winners: [winnerIdx] }]
     };
@@ -387,7 +392,6 @@ function showdown(table) {
   
   // Calculate side pots
   const sidePots = calculateSidePots(table);
-  
   const potResults = [];
   const winnerAmounts = {};
   
@@ -407,7 +411,7 @@ function showdown(table) {
     }
     
     // Find winners of this pot
-    const potWinners = eligiblePlayers.filter(p => 
+    const potWinners = eligiblePlayers.filter(p =>
       p.handResult.rank === bestHand.rank && p.handResult.value === bestHand.value
     );
     
@@ -416,7 +420,7 @@ function showdown(table) {
     
     potWinners.forEach((w, i) => {
       const winnerIdx = gs.players.indexOf(w);
-      const amount = share + (i === 0 ? remainder : 0);  // First winner gets remainder
+      const amount = share + (i === 0 ? remainder : 0);
       w.chips += amount;
       w.showCards = true;
       winnerAmounts[winnerIdx] = (winnerAmounts[winnerIdx] || 0) + amount;
@@ -435,15 +439,12 @@ function showdown(table) {
     amount
   }));
   
-  return { 
-    winners, 
-    hand: potResults[0]?.hand || 'Unknown',
-    potResults
-  };
+  return { winners, hand: potResults[0]?.hand || 'Unknown', potResults };
 }
 
 function processAction(table, seatIdx, action, amount = 0) {
   const gs = table.gameState;
+  
   if (gs.currentIdx !== seatIdx) return { error: 'Not your turn' };
   
   const player = gs.players[seatIdx];
@@ -468,6 +469,7 @@ function processAction(table, seatIdx, action, amount = 0) {
     }
     const toAdd = raiseAmt - gs.bets[seatIdx];
     if (toAdd > player.chips) return { error: 'Not enough chips' };
+    
     player.chips -= toAdd;
     gs.bets[seatIdx] = raiseAmt;
     gs.totalContributions[seatIdx] += toAdd;
@@ -503,14 +505,13 @@ function processAction(table, seatIdx, action, amount = 0) {
   if (active.length === 1) {
     // Collect remaining bets first
     collectBets(table);
-    
     const winner = active[0];
     winner.chips += gs.pot;
     gs.phase = 'showdown';
     table.handInProgress = false;
-    return { 
-      winner, 
-      hand: 'Everyone folded', 
+    return {
+      winner,
+      hand: 'Everyone folded',
       amount: gs.pot,
       potResults: [{ amount: gs.pot, winners: [gs.players.indexOf(winner)] }]
     };
@@ -542,8 +543,8 @@ function processAction(table, seatIdx, action, amount = 0) {
     nextIdx = (nextIdx + 1) % table.maxSeats;
     tries++;
   } while ((!gs.players[nextIdx] || gs.players[nextIdx].folded || gs.players[nextIdx].allIn || gs.players[nextIdx].sittingOut) && tries < table.maxSeats);
-  gs.currentIdx = nextIdx;
   
+  gs.currentIdx = nextIdx;
   return { success: true };
 }
 
@@ -554,7 +555,6 @@ function getPublicGameState(table, forPlayerId = null) {
   const players = gs.players.map((p, i) => {
     if (!p) return null;
     const isMe = p.id === forPlayerId;
-    
     const isShowdown = gs.phase === 'showdown';
     const shouldShowCards = isMe || (isShowdown && p.wentToShowdown && (p.showCards || p.voluntaryShow));
     
@@ -575,8 +575,8 @@ function getPublicGameState(table, forPlayerId = null) {
   
   return {
     phase: gs.phase,
-    pot: gs.pot,  // Collected pot in the middle
-    bets: gs.bets,  // Current bets in front of players
+    pot: gs.pot,
+    bets: gs.bets,
     community: gs.community,
     currentBet: gs.currentBet,
     currentIdx: gs.currentIdx,
@@ -673,6 +673,7 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Check if private table and user doesn't have code
     if (table.isPrivate && !hasCode) {
       socket.emit('error', { message: 'This is a private table. You need the table code or link to join.' });
       return;
@@ -707,7 +708,7 @@ io.on('connection', (socket) => {
       code, 
       seatIdx, 
       sittingOut: player.sittingOut,
-      isPrivate: table.isPrivate
+      isPrivate: table.isPrivate 
     });
     
     table.seats.forEach((p, i) => {
@@ -778,6 +779,7 @@ io.on('connection', (socket) => {
     }
     
     table.phase = 'playing';
+    
     if (startHand(table)) {
       table.seats.forEach((p, i) => {
         if (p) {
@@ -787,6 +789,7 @@ io.on('connection', (socket) => {
       io.to(table.code).emit('handStarted', { handNum: table.gameState.handNum });
       io.to(table.code).emit('sound', { type: 'deal' });
     }
+    
     broadcastTableList();
   });
   
@@ -802,13 +805,12 @@ io.on('connection', (socket) => {
     }
     
     const player = table.gameState.players[socket.seatIdx];
-    io.to(table.code).emit('actionMade', {
-      seatIdx: socket.seatIdx,
-      name: player.name,
-      action,
-      amount
+    io.to(table.code).emit('actionMade', { 
+      seatIdx: socket.seatIdx, 
+      name: player.name, 
+      action, 
+      amount 
     });
-    
     io.to(table.code).emit('sound', { type: action });
     
     table.seats.forEach((p, i) => {
@@ -821,22 +823,18 @@ io.on('connection', (socket) => {
       const phase = table.gameState.phase;
       io.to(table.code).emit('phaseChange', { phase });
       io.to(table.code).emit('sound', { type: 'deal' });
-      
-      // NEW: Emit event to animate chips sliding to pot
       io.to(table.code).emit('collectBets');
     }
     
     if (result.winners || result.winner) {
       const winners = result.winners || [{ player: result.winner, amount: result.amount }];
       
-      // NEW: Emit collectBets before showing winner
       io.to(table.code).emit('collectBets');
-      
       io.to(table.code).emit('handComplete', {
-        winners: winners.map(w => ({ 
-          name: w.player.name, 
+        winners: winners.map(w => ({
+          name: w.player.name,
           seatIdx: table.gameState.players.indexOf(w.player),
-          amount: w.amount 
+          amount: w.amount
         })),
         hand: result.hand,
         potResults: result.potResults
@@ -851,6 +849,7 @@ io.on('connection', (socket) => {
         });
         
         const activePlayers = table.seats.filter(s => s !== null && !s.sittingOut && s.chips > 0).length;
+        
         if (activePlayers >= 2) {
           if (startHand(table)) {
             table.seats.forEach((p, i) => {
@@ -866,6 +865,7 @@ io.on('connection', (socket) => {
           table.phase = 'waiting';
           table.handInProgress = false;
         }
+        
         broadcastTableList();
       }, 4000);
     }
@@ -896,6 +896,7 @@ io.on('connection', (socket) => {
     if (seatIdx !== undefined && table.seats[seatIdx]) {
       const player = table.seats[seatIdx];
       
+      // If hand in progress, fold them
       if (table.handInProgress && table.gameState.players[seatIdx]) {
         table.gameState.players[seatIdx].folded = true;
         table.gameState.players[seatIdx].sittingOut = true;
@@ -906,6 +907,7 @@ io.on('connection', (socket) => {
       
       io.to(table.code).emit('playerLeft', { name: player.name, seatIdx });
       
+      // Send updates
       table.seats.forEach((p, i) => {
         if (p) {
           io.to(p.socketId).emit('tableUpdate', {
@@ -919,6 +921,7 @@ io.on('connection', (socket) => {
       });
     }
     
+    // Clean up empty tables
     if (table.seats.every(s => s === null)) {
       tables.delete(table.code);
     }
