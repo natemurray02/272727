@@ -407,6 +407,7 @@
         if (i === gs.dealerIdx) html += '<div class="badge badge-dealer">D</div>';
         if (p.allIn) html += '<div class="badge badge-allin">ALL IN</div>';
         if (p.cards && p.cards.length) html += '<div class="player-cards">'+p.cards.map(c=>renderCard(c,true,!showCards)).join('')+'</div>';
+        else if (gs.handInProgress && !p.folded && !p.sittingOut) html += '<div class="player-cards">'+renderCard(null,true,true)+renderCard(null,true,true)+'</div>';
         html += '<div class="player-name">'+(isMe?'You':p.name)+(p.sittingOut?' (out)':'')+'</div>';
         html += '<div class="player-chips">$'+fmt(p.chips)+'</div>';
         if (i === gs.sbIdx && gs.handInProgress) html += '<div class="badge badge-sb">SB</div>';
