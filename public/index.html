@@ -416,7 +416,7 @@
         html += '<div class="actions"><div class="action-buttons"><button class="action-btn btn-fold" data-action="fold">Fold</button>';
         if (toCall===0) html += '<button class="action-btn btn-check" data-action="check">Check</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':(gs.currentBet>0?'Raise':'Bet'))+'</button>';
         else html += '<button class="action-btn btn-call" data-action="call">Call $'+fmt(Math.min(toCall,myPlayer.chips))+'</button><button class="action-btn btn-raise" id="raiseToggle">'+(state.showRaise?'Cancel':'Raise')+'</button>';
-        html += '<button class="action-btn btn-allin" data-action="allin">All In</button></div>';
+        html += '</div>';
         if (state.showRaise) html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt||minRaise)+'</span></div><div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+(state.raiseAmt||minRaise)+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½ Pot</button><button class="preset-btn" data-preset="0.75">¾ Pot</button><button class="preset-btn" data-preset="1">Pot</button><button class="action-btn btn-raise" data-action="raise" style="padding:.5rem 1rem">'+(gs.currentBet>0?'Raise':'Bet')+'</button></div>';
         html += '</div>';
       }
