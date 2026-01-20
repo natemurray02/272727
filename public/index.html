@@ -545,8 +545,8 @@
       }
       
       if (isMyTurn && !state.sittingOut) {
-        // Initialize raiseAmt if not set
-        if (!state.raiseAmt || state.raiseAmt < minRaise) state.raiseAmt = minRaise;
+        // Always default to minimum raise/bet amount
+        state.raiseAmt = minRaise;
         html += '<div class="actions">';
         // Raise/bet slider always visible
         html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt)+'</span></div>';
