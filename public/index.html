@@ -227,14 +227,11 @@
 </div>
 <div id="app"></div>
   <script>
-    // Supabase setup
     const SUPABASE_URL = 'https://sumidwwkwrocixmrsgiv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bWlkd3drd3JvY2l4bXJzZ2l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2ODQ1NzgsImV4cCI6MjA4NDI2MDU3OH0.2MdNumOLrErGknOE4SqLzs1ZIs6HOfp2JZpuz5UIhrs';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let currentUser = null;
-    
-    // CHAT: Track input value and focus state independently
     let chatInputValue = '';
     let chatInputFocused = false;
     
@@ -289,38 +286,15 @@
     const BLINDS = [[0.01,0.02],[0.02,0.04],[0.1,0.2],[0.2,0.4],[0.5,1],[1,2],[2,4],[5,10],[10,20],[25,50],[50,100],[100,200],[500,1000]];
     const SUIT_SYM = { h:'♥', d:'♦', c:'♣', s:'♠' };
     
-    // Check URL for table code (for direct links to private tables)
     const urlParams = new URLSearchParams(window.location.search);
     const urlTableCode = urlParams.get('table');
     
     let state = { 
-      screen:'lobby', 
-      tab:'create', 
-      name:localStorage.getItem('pokerName')||'', 
-      tableCode: urlTableCode || '', 
-      maxSeats:6, 
-      blindsIdx:5, 
-      buyIn:200, 
-      seatIdx:-1, 
-      isHost:false, 
-      gameState:null, 
-      seats:[], 
-      phase:'waiting', 
-      showRaise:false, 
-      raiseAmt:0, 
-      chatMessages:[], 
-      actionLog:[], 
-      winner:null, 
-      tables:[], 
-      sittingOut:false,
-      isPrivate: false,
-      hasCodeFromUrl: !!urlTableCode,
-      lastBoardLength: 0,
-      isSpectator: false,
-      revealedCards: [false, false],
-      twoSevenGame: false,
-      twoSevenBounty: 5,
-      reactionPickerIdx: null  // Which message has reaction picker open
+      screen:'lobby', tab:'create', name:localStorage.getItem('pokerName')||'', tableCode: urlTableCode || '', 
+      maxSeats:6, blindsIdx:5, buyIn:200, seatIdx:-1, isHost:false, gameState:null, seats:[], phase:'waiting', 
+      showRaise:false, raiseAmt:0, chatMessages:[], actionLog:[], winner:null, tables:[], sittingOut:false,
+      isPrivate: false, hasCodeFromUrl: !!urlTableCode, lastBoardLength: 0, isSpectator: false,
+      revealedCards: [false, false], twoSevenGame: false, twoSevenBounty: 5, reactionPickerIdx: null
     };
     
     function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n%1000?1:0)+'k' : n.toString(); }
@@ -328,40 +302,21 @@
     const REACTIONS = ['❤️', '👍', '👎', '😂', '‼️', '❓', '😢'];
     
     function renderChatReactionPicker() {
-      // Remove existing picker
       document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
-      
       if (state.reactionPickerIdx !== null) {
         const msgEl = document.querySelector('.chat-msg[data-msg-idx="'+state.reactionPickerIdx+'"]');
         if (msgEl) {
           const picker = document.createElement('div');
           picker.className = 'reaction-picker';
           picker.innerHTML = REACTIONS.map(e => '<span data-emoji="'+e+'">'+e+'</span>').join('');
-          picker.onclick = (e) => {
-            e.stopPropagation();
-            if (e.target.dataset.emoji) {
-              socket.emit('chatReaction', { msgIdx: state.reactionPickerIdx, emoji: e.target.dataset.emoji });
-              state.reactionPickerIdx = null;
-              renderChatReactionPicker();
-            }
-          };
+          picker.onclick = (e) => { e.stopPropagation(); if (e.target.dataset.emoji) { socket.emit('chatReaction', { msgIdx: state.reactionPickerIdx, emoji: e.target.dataset.emoji }); state.reactionPickerIdx = null; renderChatReactionPicker(); } };
           msgEl.appendChild(picker);
         }
       }
     }
     
-    // Format card for action log (e.g., "A♠" or "K♥")
-    function fmtCard(card) {
-      if (!card || !card.suit || !card.rank) return '??';
-      const rank = card.rank === 'T' ? '10' : card.rank;
-      return rank + SUIT_SYM[card.suit];
-    }
-    
-    // Format multiple cards (e.g., "A♠ K♥")
-    function fmtCards(cards) {
-      if (!cards || cards.length === 0) return '';
-      return cards.map(fmtCard).join(' ');
-    }
+    function fmtCard(card) { if (!card || !card.suit || !card.rank) return '??'; const rank = card.rank === 'T' ? '10' : card.rank; return rank + SUIT_SYM[card.suit]; }
+    function fmtCards(cards) { if (!cards || cards.length === 0) return ''; return cards.map(fmtCard).join(' '); }
     
     function renderCard(card, small=false, hidden=false) {
       if (!card || hidden || !card.suit) return '<div class="card '+(small?'small':'')+' hidden"></div>';
@@ -370,58 +325,32 @@
       return '<div class="card '+(small?'small':'')+' '+color+'"><span>'+rank+'</span><span>'+SUIT_SYM[card.suit]+'</span></div>';
     }
     
-    function getShareLink(code) {
-      return window.location.origin + '?table=' + code;
-    }
+    function getShareLink(code) { return window.location.origin + '?table=' + code; }
     
     function copyShareLink() {
       const link = getShareLink(state.tableCode);
-      navigator.clipboard.writeText(link).then(() => {
-        const btn = document.getElementById('copyLinkBtn');
-        if (btn) {
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-        }
-      });
+      navigator.clipboard.writeText(link).then(() => { const btn = document.getElementById('copyLinkBtn'); if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); } });
     }
     
     function render() {
       const app = document.getElementById('app');
       const authHeader = document.getElementById('authHeader');
-      
-      // Hide auth header when in game
-      if (authHeader) {
-        if (state.screen === 'game' || state.screen === 'waiting') {
-          authHeader.classList.add('in-game');
-        } else {
-          authHeader.classList.remove('in-game');
-        }
-      }
-      
+      if (authHeader) { if (state.screen === 'game' || state.screen === 'waiting') { authHeader.classList.add('in-game'); } else { authHeader.classList.remove('in-game'); } }
       if (state.screen === 'lobby') app.innerHTML = renderLobby();
       else if (state.screen === 'waiting') app.innerHTML = renderWaiting();
       else if (state.screen === 'game') app.innerHTML = renderGame();
       attachEvents();
-      
-      // CHAT: Restore input value after render
       const chatInput = document.getElementById('chatInput');
-      if (chatInput && chatInput.value !== chatInputValue) {
-        chatInput.value = chatInputValue;
-      }
-      
-      // Scroll action log to bottom
+      if (chatInput && chatInput.value !== chatInputValue) { chatInput.value = chatInputValue; }
       const logEl = document.getElementById('logMessages');
       if (logEl) logEl.scrollTop = logEl.scrollHeight;
     }
     
     function renderLobby() {
       const [sb,bb] = BLINDS[state.blindsIdx];
-      
-      // If user came via direct link, show join prompt
       if (state.hasCodeFromUrl && state.tableCode) {
         return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="card-panel" style="max-width:400px"><div class="panel-title"><span>🔒</span> Join Private Table</div><p style="color:#a1a1aa;margin-bottom:1rem;font-size:.9rem">You\'ve been invited to table <span style="color:#a78bfa;font-weight:bold">'+state.tableCode+'</span></p><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinPrivateBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">JOIN PRIVATE TABLE</button><button class="btn" id="backToLobbyBtn" style="margin-top:.5rem;background:transparent;border:1px solid #3f3f46;color:#a1a1aa">Back to Lobby</button></div></div>';
       }
-      
       return '<div class="lobby"><h1 class="logo">♠ ALL IN 27</h1><p class="subtitle">TEXAS HOLDEM</p><div class="lobby-container"><div class="card-panel"><div class="panel-title"><span>🎮</span> Active Tables <button class="refresh-btn" id="refreshBtn">🔄</button></div><div class="tables-list">'+(state.tables.length===0?'<div class="no-tables">No active tables. Create one!</div>':state.tables.map(t=>'<div class="table-row '+(t.isPrivate?'private':'')+'"><div class="table-info"><div class="table-name">'+(t.isPrivate?'<span class="private-badge">🔒</span>':'')+t.hostName+'\'s Table'+(t.twoSevenGame?' <span class="twoseven-badge">2-7: '+t.twoSevenBounty+'BB</span>':'')+'</div><div class="table-details">'+t.blinds+' blinds • $'+fmt(t.buyIn)+' buy-in'+(t.inProgress?' • In Progress':'')+'</div></div><div class="table-seats">'+Array(t.maxSeats).fill(0).map((_,i)=>'<div class="seat-dot '+(i<t.playerCount?'filled':'')+'"></div>').join('')+'</div>'+(t.isPrivate?'<button class="join-btn private-join" disabled title="Need invite link">Private</button>':'<button class="join-btn" data-code="'+t.code+'" '+(t.playerCount>=t.maxSeats?'disabled':'')+'>'+(t.playerCount>=t.maxSeats?'Full':'Join')+'</button>')+'</div>').join(''))+'</div></div><div class="card-panel"><div class="tabs"><button class="tab '+(state.tab==='create'?'active':'')+'" data-tab="create">Create Table</button><button class="tab '+(state.tab==='join'?'active':'')+'" data-tab="join">Join by Code</button></div><label>Your Name</label><input type="text" id="name" placeholder="Enter name..." value="'+state.name+'">'+(state.tab==='create'?'<div class="toggle-container"><span class="toggle-label '+(state.isPrivate?'':'active')+'">🌐 Public</span><div class="toggle-switch '+(state.isPrivate?'on':'')+'" id="privateToggle"><div class="toggle-knob"></div></div><span class="toggle-label '+(state.isPrivate?'active':'')+'">🔒 Private</span></div>'+(state.isPrivate?'<div class="private-info">Private tables require an invite link to join</div>':'')+'<label>Table Size</label><select id="maxSeats">'+[2,3,4,5,6,7,8,9].map(n=>'<option value="'+n+'" '+(state.maxSeats===n?'selected':'')+'>'+n+' Seats</option>').join('')+'</select><label>Blinds</label><select id="blinds">'+BLINDS.map((b,i)=>'<option value="'+i+'" '+(state.blindsIdx===i?'selected':'')+'>$'+b[0]+' / $'+b[1]+'</option>').join('')+'</select><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="'+(bb*20)+'" max="'+(bb*200)+'" step="'+(bb*10)+'" value="'+state.buyIn+'"><div class="toggle-container twoseven-toggle"><span class="toggle-label '+(state.twoSevenGame?'':'active')+'">No 2-7</span><div class="toggle-switch '+(state.twoSevenGame?'on':'')+'" id="twoSevenToggle"><div class="toggle-knob"></div></div><span class="toggle-label '+(state.twoSevenGame?'active':'')+'">2-7 Game</span></div>'+(state.twoSevenGame?'<label>2-7 Bounty: '+state.twoSevenBounty+' BB per player</label><input type="range" id="twoSevenBounty" min="1" max="10" step="1" value="'+state.twoSevenBounty+'">':'')+'<button class="btn btn-primary" id="createBtn" style="'+(state.isPrivate?'background:linear-gradient(135deg,#8b5cf6,#7c3aed)':'')+'">CREATE '+(state.isPrivate?'PRIVATE ':'')+'TABLE</button>':'<label>Table Code</label><input type="text" id="tableCode" placeholder="Enter 6-digit code..." value="'+state.tableCode+'" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-size:1.3rem"><label>Buy-in: $'+fmt(state.buyIn)+'</label><input type="range" id="buyIn" min="100" max="10000" step="100" value="'+state.buyIn+'"><button class="btn btn-secondary" id="joinBtn">JOIN TABLE</button>')+'</div></div><p class="footer">AllIn27.com</p></div>';
     }
     
@@ -445,61 +374,27 @@
       gs.players.forEach((p,i) => {
         const pos = positions[i];
         if (!pos) return;
-        if (!p) { 
-          // Empty seat - clickable to sit
-          html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat clickable-seat" data-seat="'+i+'">Click to Sit</div></div>'; 
-          return; 
-        }
+        if (!p) { html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%"><div class="empty-seat clickable-seat" data-seat="'+i+'">Click to Sit</div></div>'; return; }
         const isActive = gs.currentIdx === i && gs.handInProgress;
         const isMe = p.isMe;
-        // Show cards if it's me, OR if at showdown and cards have suit (means server sent them)
-        const showCards = isMe || (gs.phase === 'showdown' && p.cards && p.cards.length > 0 && p.cards[0].suit);
         html += '<div class="seat" style="left:'+pos[0]+'%;top:'+pos[1]+'%">';
-        if (gs.bets[i] > 0) {
-          const betChips = Math.min(6, Math.max(1, Math.ceil(gs.bets[i] / gs.bb)));
-          html += '<div class="player-bet"><div class="bet-chips">';
-          for(let c=0; c<Math.ceil(betChips/2); c++) html += '<div class="bet-chip chip-red"></div>';
-          for(let c=0; c<Math.ceil(betChips/3); c++) html += '<div class="bet-chip chip-gold"></div>';
-          html += '</div><span>$'+fmt(gs.bets[i])+'</span></div>';
-        }
+        if (gs.bets[i] > 0) { const betChips = Math.min(6, Math.max(1, Math.ceil(gs.bets[i] / gs.bb))); html += '<div class="player-bet"><div class="bet-chips">'; for(let c=0; c<Math.ceil(betChips/2); c++) html += '<div class="bet-chip chip-red"></div>'; for(let c=0; c<Math.ceil(betChips/3); c++) html += '<div class="bet-chip chip-gold"></div>'; html += '</div><span>$'+fmt(gs.bets[i])+'</span></div>'; }
         html += '<div class="player-box '+(isActive?'active':'')+' '+(isMe?'me':'')+' '+(p.folded?'folded':'')+' '+(p.sittingOut?'sitting-out':'')+'">';
         if (i === gs.dealerIdx) html += '<div class="badge badge-dealer">D</div>';
         if (p.allIn) html += '<div class="badge badge-allin">ALL IN</div>';
-        
-        // Check if player has actual cards (with suit) or just placeholders
         const hasRealCards = p.cards && p.cards.length && p.cards[0] && p.cards[0].suit;
         const hasPlaceholderCards = p.cards && p.cards.length && !p.cards[0].suit;
-        
         if (hasRealCards) {
           html += '<div class="player-cards">';
           p.cards.forEach((c, cardIdx) => {
-            if (isMe) {
-              // My cards - can double-click to reveal to others
-              const isRevealed = state.revealedCards && state.revealedCards[cardIdx];
-              html += '<div class="card small '+(c.suit==='h'||c.suit==='d'?'red':'black')+' my-card'+(isRevealed?' revealed':'')+'" data-card-idx="'+cardIdx+'"><span>'+(c.rank==='T'?'10':c.rank)+'</span><span>'+SUIT_SYM[c.suit]+'</span></div>';
-            } else {
-              // Opponent's visible cards (showdown or revealed)
-              html += renderCard(c, true, false);
-            }
+            if (isMe) { const isRevealed = state.revealedCards && state.revealedCards[cardIdx]; html += '<div class="card small '+(c.suit==='h'||c.suit==='d'?'red':'black')+' my-card'+(isRevealed?' revealed':'')+'" data-card-idx="'+cardIdx+'"><span>'+(c.rank==='T'?'10':c.rank)+'</span><span>'+SUIT_SYM[c.suit]+'</span></div>'; }
+            else { html += renderCard(c, true, false); }
           });
           html += '</div>';
         } else if (hasPlaceholderCards || (gs.handInProgress && !p.folded && !p.sittingOut)) {
-          // Show card backs for opponents with hidden cards
           html += '<div class="player-cards">';
-          if (p.cards && p.cards.length) {
-            // Check each card - might be partially revealed
-            p.cards.forEach((c, cardIdx) => {
-              if (c && c.suit) {
-                // This card is revealed
-                html += renderCard(c, true, false);
-              } else {
-                // Hidden card
-                html += renderCard(null, true, true);
-              }
-            });
-          } else {
-            html += renderCard(null,true,true)+renderCard(null,true,true);
-          }
+          if (p.cards && p.cards.length) { p.cards.forEach((c, cardIdx) => { if (c && c.suit) { html += renderCard(c, true, false); } else { html += renderCard(null, true, true); } }); }
+          else { html += renderCard(null,true,true)+renderCard(null,true,true); }
           html += '</div>';
         }
         html += '<div class="player-name">'+(isMe?'You':p.name)+(p.sittingOut?' (out)':'')+'</div>';
@@ -521,37 +416,15 @@
       const minRaise = gs.currentBet + (gs.bb||2);
       const maxRaise = myPlayer ? myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0) : 0;
       let html = '<div class="game-container">'+renderGameTable();
-      
-      // CHAT: Separate messages div from input - input uses stored value
-      html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map((m,idx)=>{
-        let reactionsHtml = '';
-        if (m.reactions && Object.keys(m.reactions).length > 0) {
-          reactionsHtml = '<div class="reactions">';
-          for (const [emoji, users] of Object.entries(m.reactions)) {
-            const isMine = users.includes(state.name);
-            reactionsHtml += '<span class="reaction'+(isMine?' mine':'')+'" data-msg-idx="'+idx+'" data-emoji="'+emoji+'">'+emoji+'<span class="reaction-count">'+users.length+'</span></span>';
-          }
-          reactionsHtml += '</div>';
-        }
-        return '<div class="chat-msg" data-msg-idx="'+idx+'"><span class="react-btn" data-msg-idx="'+idx+'">😀</span><span class="name">'+m.name+':</span> '+m.message+reactionsHtml+'</div>';
-      }).join('')+'</div><div class="chat-input-container"><input type="text" id="chatInput" placeholder="Type a message..." value="'+chatInputValue.replace(/"/g, '&quot;')+'"></div></div>';
-      
+      html += '<div class="chat-box"><div class="chat-header">💬 Chat</div><div class="chat-messages" id="chatMessages">'+state.chatMessages.map((m,idx)=>{ let reactionsHtml = ''; if (m.reactions && Object.keys(m.reactions).length > 0) { reactionsHtml = '<div class="reactions">'; for (const [emoji, users] of Object.entries(m.reactions)) { const isMine = users.includes(state.name); reactionsHtml += '<span class="reaction'+(isMine?' mine':'')+'" data-msg-idx="'+idx+'" data-emoji="'+emoji+'">'+emoji+'<span class="reaction-count">'+users.length+'</span></span>'; } reactionsHtml += '</div>'; } return '<div class="chat-msg" data-msg-idx="'+idx+'"><span class="react-btn" data-msg-idx="'+idx+'">😀</span><span class="name">'+m.name+':</span> '+m.message+reactionsHtml+'</div>'; }).join('')+'</div><div class="chat-input-container"><input type="text" id="chatInput" placeholder="Type a message..." value="'+chatInputValue.replace(/"/g, '&quot;')+'"></div></div>';
       html += '<div class="action-log"><div class="log-header">📋 Action Log</div><div class="log-messages" id="logMessages">'+state.actionLog.map(m=>'<div class="log-msg '+m.type+'">'+m.text+'</div>').join('')+'</div></div>';
       if (state.sittingOut) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
-      
-      // Show "Show Cards" button at showdown if player can show
-      if (gs.phase === 'showdown' && myPlayer && myPlayer.canShow) {
-        html += '<button class="sit-in-btn btn-show-cards" id="showCardsBtn">Show Cards</button>';
-      }
-      
+      if (gs.phase === 'showdown' && myPlayer && myPlayer.canShow) { html += '<button class="sit-in-btn btn-show-cards" id="showCardsBtn">Show Cards</button>'; }
       if (isMyTurn && !state.sittingOut) {
-        // Always default to minimum raise/bet amount
         state.raiseAmt = minRaise;
         html += '<div class="actions">';
-        // Raise/bet slider always visible
         html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt)+'</span></div>';
         html += '<div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+state.raiseAmt+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½</button><button class="preset-btn" data-preset="0.75">¾</button><button class="preset-btn" data-preset="1">Pot</button></div>';
-        // Action buttons
         html += '<div class="action-buttons" style="margin-top:.5rem"><button class="action-btn btn-fold" data-action="fold">Fold</button>';
         if (toCall===0) html += '<button class="action-btn btn-check" data-action="check">Check</button>';
         else html += '<button class="action-btn btn-call" data-action="call">Call $'+fmt(Math.min(toCall,myPlayer.chips))+'</button>';
@@ -566,189 +439,61 @@
     function attachEvents() {
       document.querySelectorAll('.tab').forEach(tab => { tab.onclick = () => { state.tab = tab.dataset.tab; playSound('click'); render(); }; });
       const refreshBtn = document.getElementById('refreshBtn'); if (refreshBtn) refreshBtn.onclick = () => { socket.emit('getTables'); playSound('click'); };
-      
-      // Join public table from lobby list
-      document.querySelectorAll('.join-btn[data-code]').forEach(btn => { 
-        btn.onclick = () => { 
-          if (!state.name.trim()) { alert('Enter your name first'); return; } 
-          const code = btn.dataset.code; 
-          const table = state.tables.find(t=>t.code===code); 
-          socket.emit('joinTable', { code, name:state.name, buyIn:table?table.buyIn:state.buyIn, hasCode: true }); 
-          localStorage.setItem('pokerName', state.name); 
-          playSound('click'); 
-        }; 
-      });
-      
-      // Join private table from URL
-      const joinPrivateBtn = document.getElementById('joinPrivateBtn'); 
-      if (joinPrivateBtn) joinPrivateBtn.onclick = () => { 
-        if (!state.name.trim()) { alert('Enter your name'); return; } 
-        socket.emit('joinTable', { code: state.tableCode, name: state.name, buyIn: state.buyIn, hasCode: true }); 
-        localStorage.setItem('pokerName', state.name); 
-        playSound('click'); 
-      };
-      
-      // Back to lobby from private join screen
-      const backToLobbyBtn = document.getElementById('backToLobbyBtn');
-      if (backToLobbyBtn) backToLobbyBtn.onclick = () => {
-        state.hasCodeFromUrl = false;
-        state.tableCode = '';
-        window.history.replaceState({}, document.title, window.location.pathname);
-        render();
-      };
-      
+      document.querySelectorAll('.join-btn[data-code]').forEach(btn => { btn.onclick = () => { if (!state.name.trim()) { alert('Enter your name first'); return; } const code = btn.dataset.code; const table = state.tables.find(t=>t.code===code); socket.emit('joinTable', { code, name:state.name, buyIn:table?table.buyIn:state.buyIn, hasCode: true }); localStorage.setItem('pokerName', state.name); playSound('click'); }; });
+      const joinPrivateBtn = document.getElementById('joinPrivateBtn'); if (joinPrivateBtn) joinPrivateBtn.onclick = () => { if (!state.name.trim()) { alert('Enter your name'); return; } socket.emit('joinTable', { code: state.tableCode, name: state.name, buyIn: state.buyIn, hasCode: true }); localStorage.setItem('pokerName', state.name); playSound('click'); };
+      const backToLobbyBtn = document.getElementById('backToLobbyBtn'); if (backToLobbyBtn) backToLobbyBtn.onclick = () => { state.hasCodeFromUrl = false; state.tableCode = ''; window.history.replaceState({}, document.title, window.location.pathname); render(); };
       const nameInput = document.getElementById('name'); if (nameInput) nameInput.oninput = e => state.name = e.target.value;
       const codeInput = document.getElementById('tableCode'); if (codeInput) codeInput.oninput = e => state.tableCode = e.target.value.toUpperCase();
       const seatsSelect = document.getElementById('maxSeats'); if (seatsSelect) seatsSelect.onchange = e => { state.maxSeats = parseInt(e.target.value); render(); };
       const blindsSelect = document.getElementById('blinds'); if (blindsSelect) blindsSelect.onchange = e => { state.blindsIdx = parseInt(e.target.value); const [sb,bb] = BLINDS[state.blindsIdx]; state.buyIn = bb*100; render(); };
       const buyInSlider = document.getElementById('buyIn'); if (buyInSlider) buyInSlider.oninput = e => { state.buyIn = parseInt(e.target.value); render(); };
-      
-      // Private toggle
-      const privateToggle = document.getElementById('privateToggle');
-      if (privateToggle) privateToggle.onclick = () => { state.isPrivate = !state.isPrivate; playSound('click'); render(); };
-      
-      // 2-7 game toggle
-      const twoSevenToggle = document.getElementById('twoSevenToggle');
-      if (twoSevenToggle) twoSevenToggle.onclick = () => { state.twoSevenGame = !state.twoSevenGame; playSound('click'); render(); };
-      
-      // 2-7 bounty slider
-      const twoSevenBountySlider = document.getElementById('twoSevenBounty');
-      if (twoSevenBountySlider) twoSevenBountySlider.oninput = e => { state.twoSevenBounty = parseInt(e.target.value); render(); };
-      
-      // Create table
-      const createBtn = document.getElementById('createBtn'); 
-      if (createBtn) createBtn.onclick = () => { 
-        if (!state.name.trim()) { alert('Enter your name'); return; } 
-        socket.emit('createTable', { 
-          name: state.name, 
-          maxSeats: state.maxSeats, 
-          blinds: BLINDS[state.blindsIdx], 
-          buyIn: state.buyIn,
-          isPrivate: state.isPrivate,
-          twoSevenGame: state.twoSevenGame,
-          twoSevenBounty: state.twoSevenBounty
-        }); 
-        localStorage.setItem('pokerName', state.name); 
-        playSound('click'); 
-      };
-      
-      // Join by code
-      const joinBtn = document.getElementById('joinBtn'); 
-      if (joinBtn) joinBtn.onclick = () => { 
-        if (!state.name.trim()) { alert('Enter your name'); return; } 
-        if (!state.tableCode.trim()) { alert('Enter table code'); return; } 
-        socket.emit('joinTable', { code: state.tableCode, name: state.name, buyIn: state.buyIn, hasCode: true }); 
-        localStorage.setItem('pokerName', state.name); 
-        playSound('click'); 
-      };
-      
+      const privateToggle = document.getElementById('privateToggle'); if (privateToggle) privateToggle.onclick = () => { state.isPrivate = !state.isPrivate; playSound('click'); render(); };
+      const twoSevenToggle = document.getElementById('twoSevenToggle'); if (twoSevenToggle) twoSevenToggle.onclick = () => { state.twoSevenGame = !state.twoSevenGame; playSound('click'); render(); };
+      const twoSevenBountySlider = document.getElementById('twoSevenBounty'); if (twoSevenBountySlider) twoSevenBountySlider.oninput = e => { state.twoSevenBounty = parseInt(e.target.value); render(); };
+      const createBtn = document.getElementById('createBtn'); if (createBtn) createBtn.onclick = () => { if (!state.name.trim()) { alert('Enter your name'); return; } socket.emit('createTable', { name: state.name, maxSeats: state.maxSeats, blinds: BLINDS[state.blindsIdx], buyIn: state.buyIn, isPrivate: state.isPrivate, twoSevenGame: state.twoSevenGame, twoSevenBounty: state.twoSevenBounty }); localStorage.setItem('pokerName', state.name); playSound('click'); };
+      const joinBtn = document.getElementById('joinBtn'); if (joinBtn) joinBtn.onclick = () => { if (!state.name.trim()) { alert('Enter your name'); return; } if (!state.tableCode.trim()) { alert('Enter table code'); return; } socket.emit('joinTable', { code: state.tableCode, name: state.name, buyIn: state.buyIn, hasCode: true }); localStorage.setItem('pokerName', state.name); playSound('click'); };
       const startBtn = document.getElementById('startBtn'); if (startBtn) startBtn.onclick = () => { socket.emit('startGame'); playSound('click'); };
       const leaveBtn = document.getElementById('leaveBtn'); if (leaveBtn) leaveBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; state.lastBoardLength=0; state.isSpectator=false; chatInputValue=''; socket.emit('getTables'); render(); };
       const leaveSeatBtn = document.getElementById('leaveSeatBtn'); if (leaveSeatBtn) leaveSeatBtn.onclick = () => { socket.emit('leaveSeat'); state.isSpectator=true; state.seatIdx=-1; playSound('click'); };
       const lobbyBtn = document.getElementById('lobbyBtn'); if (lobbyBtn) lobbyBtn.onclick = () => { socket.emit('leaveTable'); state.screen='lobby'; state.chatMessages=[]; state.actionLog=[]; state.isPrivate=false; state.lastBoardLength=0; state.isSpectator=false; chatInputValue=''; socket.emit('getTables'); render(); };
-      // Clickable seats
-      document.querySelectorAll('.clickable-seat').forEach(seat => {
-        seat.onclick = () => {
-          const seatIdx = parseInt(seat.dataset.seat);
-          socket.emit('takeSeat', { seatIdx, buyIn: state.buyIn, name: state.name });
-          playSound('click');
-        };
-      });
-      // Double-click to reveal card
-      document.querySelectorAll('.my-card').forEach(card => {
-        card.ondblclick = () => {
-          const cardIdx = parseInt(card.dataset.cardIdx);
-          state.revealedCards[cardIdx] = !state.revealedCards[cardIdx];
-          socket.emit('revealCard', { cardIdx, revealed: state.revealedCards[cardIdx] });
-          playSound('click');
-          render();
-        };
-      });
-      
+      document.querySelectorAll('.clickable-seat').forEach(seat => { seat.onclick = () => { const seatIdx = parseInt(seat.dataset.seat); socket.emit('takeSeat', { seatIdx, buyIn: state.buyIn, name: state.name }); playSound('click'); }; });
+      document.querySelectorAll('.my-card').forEach(card => { card.ondblclick = () => { const cardIdx = parseInt(card.dataset.cardIdx); state.revealedCards[cardIdx] = !state.revealedCards[cardIdx]; socket.emit('revealCard', { cardIdx, revealed: state.revealedCards[cardIdx] }); playSound('click'); render(); }; });
       const sitInBtn = document.getElementById('sitInBtn'); if (sitInBtn) sitInBtn.onclick = () => { socket.emit('sitIn'); state.sittingOut=false; playSound('click'); render(); };
       const showCardsBtn = document.getElementById('showCardsBtn'); if (showCardsBtn) showCardsBtn.onclick = () => { socket.emit('showCards'); playSound('click'); };
-     document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const slider = document.getElementById('raiseSlider'); const raiseAmt = slider ? parseInt(slider.value) : (state.gameState.currentBet + state.gameState.bb); socket.emit('action',{action:'raise',amount:raiseAmt}); } else { socket.emit('action',{action}); } playSound(action); }; });
-      const raiseSlider = document.getElementById('raiseSlider'); if (raiseSlider) raiseSlider.oninput = e => { const amt = parseInt(e.target.value); const display = document.querySelector('.raise-amount'); if (display) display.textContent = '$' + fmt(amt); };
-      const raiseMinus = document.getElementById('raiseMinus'); if (raiseMinus) raiseMinus.onclick = () => { const gs=state.gameState; state.raiseAmt=Math.max(gs.currentBet+gs.bb,(state.raiseAmt||gs.currentBet+gs.bb)-gs.bb); playSound('click'); render(); };
-      const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; state.raiseAmt=Math.min(maxRaise,(state.raiseAmt||gs.currentBet+gs.bb)+gs.bb); playSound('click'); render(); };
-      document.querySelectorAll('[data-preset]').forEach(btn => { btn.onclick = () => { const gs=state.gameState; const myPlayer=gs.players.find(p=>p&&p.isMe); const maxRaise=myPlayer?myPlayer.chips+(gs.bets[myPlayer.seatIdx]||0):0; const mult=parseFloat(btn.dataset.preset); state.raiseAmt=Math.min(maxRaise,Math.max(gs.currentBet+gs.bb,Math.floor(gs.pot*mult))); playSound('click'); render(); }; });
       
-      // CHAT: Track input value independently and restore focus
+      // Action buttons - read from slider directly
+      document.querySelectorAll('[data-action]').forEach(btn => { btn.onclick = () => { const action = btn.dataset.action; if (action==='raise') { const slider = document.getElementById('raiseSlider'); const raiseAmt = slider ? parseInt(slider.value) : (state.gameState.currentBet + state.gameState.bb); socket.emit('action',{action:'raise',amount:raiseAmt}); } else { socket.emit('action',{action}); } playSound(action); }; });
+      
+      // Slider - only update display, not state
+      const raiseSlider = document.getElementById('raiseSlider'); if (raiseSlider) raiseSlider.oninput = e => { const amt = parseInt(e.target.value); const display = document.querySelector('.raise-amount'); if (display) display.textContent = '$' + fmt(amt); };
+      
+      // +/- buttons - update slider and display directly
+      const raiseMinus = document.getElementById('raiseMinus'); if (raiseMinus) raiseMinus.onclick = () => { const gs = state.gameState; const slider = document.getElementById('raiseSlider'); if (slider) { const minRaise = gs.currentBet + gs.bb; const newVal = Math.max(minRaise, parseInt(slider.value) - gs.bb); slider.value = newVal; const display = document.querySelector('.raise-amount'); if (display) display.textContent = '$' + fmt(newVal); } playSound('click'); };
+      const raisePlus = document.getElementById('raisePlus'); if (raisePlus) raisePlus.onclick = () => { const gs = state.gameState; const myPlayer = gs.players.find(p=>p&&p.isMe); const maxRaise = myPlayer ? myPlayer.chips + (gs.bets[myPlayer.seatIdx]||0) : 0; const slider = document.getElementById('raiseSlider'); if (slider) { const newVal = Math.min(maxRaise, parseInt(slider.value) + gs.bb); slider.value = newVal; const display = document.querySelector('.raise-amount'); if (display) display.textContent = '$' + fmt(newVal); } playSound('click'); };
+      
+      // Preset buttons - update slider and display directly
+      document.querySelectorAll('[data-preset]').forEach(btn => { btn.onclick = () => { const gs = state.gameState; const myPlayer = gs.players.find(p=>p&&p.isMe); const maxRaise = myPlayer ? myPlayer.chips + (gs.bets[myPlayer.seatIdx]||0) : 0; const minRaise = gs.currentBet + gs.bb; const mult = parseFloat(btn.dataset.preset); const newVal = Math.min(maxRaise, Math.max(minRaise, Math.floor(gs.pot * mult))); const slider = document.getElementById('raiseSlider'); if (slider) { slider.value = newVal; const display = document.querySelector('.raise-amount'); if (display) display.textContent = '$' + fmt(newVal); } playSound('click'); }; });
+      
       const chatInput = document.getElementById('chatInput'); 
       if (chatInput) {
         chatInput.oninput = e => { chatInputValue = e.target.value; };
         chatInput.onfocus = () => { chatInputFocused = true; };
         chatInput.onblur = () => { chatInputFocused = false; };
-        chatInput.onkeydown = e => { 
-          if (e.key==='Enter' && chatInputValue.trim()) { 
-            socket.emit('chat',{message: chatInputValue}); 
-            chatInputValue = ''; 
-            chatInput.value = '';
-          } 
-        };
-        // Restore focus if it was focused before render
-        if (chatInputFocused) {
-          chatInput.focus();
-          // Put cursor at end
-          chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
-        }
+        chatInput.onkeydown = e => { if (e.key==='Enter' && chatInputValue.trim()) { socket.emit('chat',{message: chatInputValue}); chatInputValue = ''; chatInput.value = ''; } };
+        if (chatInputFocused) { chatInput.focus(); chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); }
       }
-      
-      // Reaction button click - show picker
-      document.querySelectorAll('.react-btn').forEach(btn => {
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          const msgIdx = parseInt(btn.dataset.msgIdx);
-          state.reactionPickerIdx = state.reactionPickerIdx === msgIdx ? null : msgIdx;
-          renderChatReactionPicker();
-        };
-      });
-      
-      // Existing reaction click - toggle
-      document.querySelectorAll('.reaction').forEach(r => {
-        r.onclick = () => {
-          const msgIdx = parseInt(r.dataset.msgIdx);
-          const emoji = r.dataset.emoji;
-          socket.emit('chatReaction', { msgIdx, emoji });
-        };
-      });
-      
-      // Close reaction picker when clicking elsewhere
-      document.addEventListener('click', () => {
-        if (state.reactionPickerIdx !== null) {
-          state.reactionPickerIdx = null;
-          renderChatReactionPicker();
-        }
-      });
+      document.querySelectorAll('.react-btn').forEach(btn => { btn.onclick = (e) => { e.stopPropagation(); const msgIdx = parseInt(btn.dataset.msgIdx); state.reactionPickerIdx = state.reactionPickerIdx === msgIdx ? null : msgIdx; renderChatReactionPicker(); }; });
+      document.querySelectorAll('.reaction').forEach(r => { r.onclick = () => { const msgIdx = parseInt(r.dataset.msgIdx); const emoji = r.dataset.emoji; socket.emit('chatReaction', { msgIdx, emoji }); }; });
+      document.addEventListener('click', () => { if (state.reactionPickerIdx !== null) { state.reactionPickerIdx = null; renderChatReactionPicker(); } });
     }
     
-    // Check for new community cards and log them
     function checkBoardCards(gs) {
       if (!gs || !gs.community) return;
       const boardLen = gs.community.length;
-      
       if (boardLen > state.lastBoardLength) {
-        if (state.lastBoardLength === 0 && boardLen >= 3) {
-          // Flop
-          state.actionLog.push({
-            text: '🃏 Flop: ' + fmtCards(gs.community.slice(0, 3)),
-            type: 'board'
-          });
-        }
-        if (state.lastBoardLength <= 3 && boardLen >= 4) {
-          // Turn
-          state.actionLog.push({
-            text: '🃏 Turn: ' + fmtCard(gs.community[3]),
-            type: 'board'
-          });
-        }
-        if (state.lastBoardLength <= 4 && boardLen >= 5) {
-          // River
-          state.actionLog.push({
-            text: '🃏 River: ' + fmtCard(gs.community[4]),
-            type: 'board'
-          });
-        }
+        if (state.lastBoardLength === 0 && boardLen >= 3) { state.actionLog.push({ text: '🃏 Flop: ' + fmtCards(gs.community.slice(0, 3)), type: 'board' }); }
+        if (state.lastBoardLength <= 3 && boardLen >= 4) { state.actionLog.push({ text: '🃏 Turn: ' + fmtCard(gs.community[3]), type: 'board' }); }
+        if (state.lastBoardLength <= 4 && boardLen >= 5) { state.actionLog.push({ text: '🃏 River: ' + fmtCard(gs.community[4]), type: 'board' }); }
         state.lastBoardLength = boardLen;
       }
     }
@@ -762,152 +507,25 @@
     socket.on('playerSatIn', ({name,seatIdx}) => { state.actionLog.push({text:name+' is now active',type:'system'}); render(); });
     socket.on('seatTaken', ({seatIdx}) => { state.seatIdx=seatIdx; state.isSpectator=false; state.sittingOut=false; render(); });
     socket.on('leftSeat', () => { state.seatIdx=-1; state.isSpectator=true; render(); });
-    socket.on('cardRevealed', ({name,seatIdx,cardIdx,card}) => { 
-      state.actionLog.push({text: name + ' reveals: ' + card, type:'cards'}); 
-      render(); 
-    });
-    
-    socket.on('twoSevenWin', ({name,bountyPerPlayer,totalBounty}) => {
-      state.actionLog.push({text: '🎉 ' + name + ' wins 2-7 bounty! +$' + fmt(totalBounty), type:'win'});
-      playSound('win');
-      render();
-    });
-    
-    // Player showed their cards voluntarily
-    socket.on('playerShowedCards', ({name,seatIdx,cards}) => { 
-      if (cards) {
-        state.actionLog.push({text: name + ' shows: ' + cards, type:'cards'}); 
-      } else {
-        state.actionLog.push({text: name + ' shows their cards', type:'cards'}); 
-      }
-      render(); 
-    });
-    
-    socket.on('handStarted', ({handNum}) => { 
-      state.screen='game'; 
-      state.winner=null; 
-      state.lastBoardLength = 0;
-      state.revealedCards = [false, false];  // Reset revealed cards for new hand
-      state.actionLog.push({text:'━━━ Hand #'+handNum+' ━━━',type:'system'}); 
-      playSound('deal'); 
-      render(); 
-    });
-    
-    socket.on('gameUpdate', gameState => { 
-      state.gameState=gameState; 
-      state.screen='game'; 
-      checkBoardCards(gameState);
-      render(); 
-    });
-    
-    socket.on('actionMade', ({seatIdx,name,action,amount}) => { 
-      let text='',type=action; 
-      if(action==='fold') text=name+' folds'; 
-      else if(action==='check') text=name+' checks'; 
-      else if(action==='call') text=name+' calls'; 
-      else if(action==='raise') text=name+' raises to $'+fmt(amount); 
-      else if(action==='allin') text=name+' ALL IN'; 
-      state.actionLog.push({text,type}); 
-      render(); 
-    });
-    
+    socket.on('cardRevealed', ({name,seatIdx,cardIdx,card}) => { state.actionLog.push({text: name + ' reveals: ' + card, type:'cards'}); render(); });
+    socket.on('twoSevenWin', ({name,bountyPerPlayer,totalBounty}) => { state.actionLog.push({text: '🎉 ' + name + ' wins 2-7 bounty! +$' + fmt(totalBounty), type:'win'}); playSound('win'); render(); });
+    socket.on('playerShowedCards', ({name,seatIdx,cards}) => { if (cards) { state.actionLog.push({text: name + ' shows: ' + cards, type:'cards'}); } else { state.actionLog.push({text: name + ' shows their cards', type:'cards'}); } render(); });
+    socket.on('handStarted', ({handNum}) => { state.screen='game'; state.winner=null; state.lastBoardLength = 0; state.revealedCards = [false, false]; state.actionLog.push({text:'━━━ Hand #'+handNum+' ━━━',type:'system'}); playSound('deal'); render(); });
+    socket.on('gameUpdate', gameState => { state.gameState=gameState; state.screen='game'; checkBoardCards(gameState); render(); });
+    socket.on('actionMade', ({seatIdx,name,action,amount}) => { let text='',type=action; if(action==='fold') text=name+' folds'; else if(action==='check') text=name+' checks'; else if(action==='call') text=name+' calls'; else if(action==='raise') text=name+' raises to $'+fmt(amount); else if(action==='allin') text=name+' ALL IN'; state.actionLog.push({text,type}); render(); });
     socket.on('sound', ({type}) => { playSound(type); });
-    
-    socket.on('phaseChange', ({phase,community}) => { 
-      // Phase change is now handled by checkBoardCards in gameUpdate
-      // This is a backup in case server sends community cards with phaseChange
-      if (community && community.length > 0) {
-        const gs = state.gameState;
-        if (gs) {
-          gs.community = community;
-          checkBoardCards(gs);
-        }
-      }
-    });
-    
-    socket.on('handComplete', ({winners,hand,potResults,amount}) => { 
-      // Build winner display with cards if available
-      const winnerNames = winners.map(w => w.name).join(', ');
-      const totalAmount = winners.reduce((sum, w) => sum + w.amount, 0);
-      
-      // Log the winner with their cards if shown
-      let winText = winnerNames + ' wins $' + fmt(totalAmount);
-      if (hand && hand !== 'Everyone folded') {
-        winText += ' with ' + hand;
-      }
-      state.actionLog.push({text: winText, type:'win'}); 
-      
-      // Log showdown cards for all players who went to showdown (if cards were revealed)
-      winners.forEach(w => {
-        if (w.cards && hand !== 'Everyone folded') {
-          state.actionLog.push({text: '  ' + w.name + ': ' + w.cards, type:'cards'});
-        }
-      });
-      
-      // Set winner state for overlay
-      const winnerCards = (hand !== 'Everyone folded' && winners[0]?.cards) ? winners[0].cards : null;
-      state.winner = {
-        names: winners.map(w => w.name),
-        hand: hand,
-        amount: totalAmount,
-        cards: winnerCards
-      }; 
-      
-      playSound('win'); 
-      render(); 
-      setTimeout(()=>{state.winner=null;render();},3500); 
-    });
-    
-    // CHAT: Only update messages, don't touch input
-    socket.on('chatMessage', ({name,message}) => { 
-      state.chatMessages.push({name, message, reactions: {}}); 
-      // Only update the messages div, not the whole thing
-      const chatEl = document.getElementById('chatMessages'); 
-      if (chatEl) {
-        updateChatMessages();
-      }
-    });
-    
-    socket.on('chatReactionUpdate', ({msgIdx, reactions}) => {
-      if (state.chatMessages[msgIdx]) {
-        state.chatMessages[msgIdx].reactions = reactions;
-        updateChatMessages();
-      }
-    });
+    socket.on('phaseChange', ({phase,community}) => { if (community && community.length > 0) { const gs = state.gameState; if (gs) { gs.community = community; checkBoardCards(gs); } } });
+    socket.on('handComplete', ({winners,hand,potResults,amount}) => { const winnerNames = winners.map(w => w.name).join(', '); const totalAmount = winners.reduce((sum, w) => sum + w.amount, 0); let winText = winnerNames + ' wins $' + fmt(totalAmount); if (hand && hand !== 'Everyone folded') { winText += ' with ' + hand; } state.actionLog.push({text: winText, type:'win'}); winners.forEach(w => { if (w.cards && hand !== 'Everyone folded') { state.actionLog.push({text: '  ' + w.name + ': ' + w.cards, type:'cards'}); } }); const winnerCards = (hand !== 'Everyone folded' && winners[0]?.cards) ? winners[0].cards : null; state.winner = { names: winners.map(w => w.name), hand: hand, amount: totalAmount, cards: winnerCards }; playSound('win'); render(); setTimeout(()=>{state.winner=null;render();},3500); });
+    socket.on('chatMessage', ({name,message}) => { state.chatMessages.push({name, message, reactions: {}}); const chatEl = document.getElementById('chatMessages'); if (chatEl) { updateChatMessages(); } });
+    socket.on('chatReactionUpdate', ({msgIdx, reactions}) => { if (state.chatMessages[msgIdx]) { state.chatMessages[msgIdx].reactions = reactions; updateChatMessages(); } });
     
     function updateChatMessages() {
       const chatEl = document.getElementById('chatMessages');
       if (!chatEl) return;
-      chatEl.innerHTML = state.chatMessages.map((m,idx) => {
-        let reactionsHtml = '';
-        if (m.reactions && Object.keys(m.reactions).length > 0) {
-          reactionsHtml = '<div class="reactions">';
-          for (const [emoji, users] of Object.entries(m.reactions)) {
-            const isMine = users.includes(state.name);
-            reactionsHtml += '<span class="reaction'+(isMine?' mine':'')+'" data-msg-idx="'+idx+'" data-emoji="'+emoji+'">'+emoji+'<span class="reaction-count">'+users.length+'</span></span>';
-          }
-          reactionsHtml += '</div>';
-        }
-        return '<div class="chat-msg" data-msg-idx="'+idx+'"><span class="react-btn" data-msg-idx="'+idx+'">😀</span><span class="name">'+m.name+':</span> '+m.message+reactionsHtml+'</div>';
-      }).join('');
+      chatEl.innerHTML = state.chatMessages.map((m,idx) => { let reactionsHtml = ''; if (m.reactions && Object.keys(m.reactions).length > 0) { reactionsHtml = '<div class="reactions">'; for (const [emoji, users] of Object.entries(m.reactions)) { const isMine = users.includes(state.name); reactionsHtml += '<span class="reaction'+(isMine?' mine':'')+'" data-msg-idx="'+idx+'" data-emoji="'+emoji+'">'+emoji+'<span class="reaction-count">'+users.length+'</span></span>'; } reactionsHtml += '</div>'; } return '<div class="chat-msg" data-msg-idx="'+idx+'"><span class="react-btn" data-msg-idx="'+idx+'">😀</span><span class="name">'+m.name+':</span> '+m.message+reactionsHtml+'</div>'; }).join('');
       chatEl.scrollTop = chatEl.scrollHeight;
-      
-      // Re-attach event listeners
-      document.querySelectorAll('.react-btn').forEach(btn => {
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          const msgIdx = parseInt(btn.dataset.msgIdx);
-          state.reactionPickerIdx = state.reactionPickerIdx === msgIdx ? null : msgIdx;
-          renderChatReactionPicker();
-        };
-      });
-      document.querySelectorAll('.reaction').forEach(r => {
-        r.onclick = () => {
-          const msgIdx = parseInt(r.dataset.msgIdx);
-          const emoji = r.dataset.emoji;
-          socket.emit('chatReaction', { msgIdx, emoji });
-        };
-      });
+      document.querySelectorAll('.react-btn').forEach(btn => { btn.onclick = (e) => { e.stopPropagation(); const msgIdx = parseInt(btn.dataset.msgIdx); state.reactionPickerIdx = state.reactionPickerIdx === msgIdx ? null : msgIdx; renderChatReactionPicker(); }; });
+      document.querySelectorAll('.reaction').forEach(r => { r.onclick = () => { const msgIdx = parseInt(r.dataset.msgIdx); const emoji = r.dataset.emoji; socket.emit('chatReaction', { msgIdx, emoji }); }; });
     }
     
     socket.on('error', ({message}) => { alert(message); });
