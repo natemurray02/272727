@@ -421,7 +421,6 @@
       if (state.sittingOut) html += '<button class="sit-in-btn" id="sitInBtn">Sit In Next Hand</button>';
       if (gs.phase === 'showdown' && myPlayer && myPlayer.canShow) { html += '<button class="sit-in-btn btn-show-cards" id="showCardsBtn">Show Cards</button>'; }
       if (isMyTurn && !state.sittingOut) {
-        state.raiseAmt = minRaise;
         html += '<div class="actions">';
         html += '<div style="text-align:center;margin-bottom:.4rem"><span style="color:#a1a1aa;font-size:.8rem">'+(gs.currentBet>0?'Raise to':'Bet')+' </span><span class="raise-amount">$'+fmt(state.raiseAmt)+'</span></div>';
         html += '<div class="raise-controls"><button class="raise-btn" id="raiseMinus">−</button><input type="range" class="raise-slider" id="raiseSlider" min="'+minRaise+'" max="'+maxRaise+'" step="'+gs.bb+'" value="'+state.raiseAmt+'"><button class="raise-btn" id="raisePlus">+</button><button class="preset-btn" data-preset="0.5">½</button><button class="preset-btn" data-preset="0.75">¾</button><button class="preset-btn" data-preset="1">Pot</button></div>';
